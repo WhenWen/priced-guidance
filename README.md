@@ -181,7 +181,7 @@ idea-arena run submissions/reference_pair_submit8 \
 ```
 
 Replace the submission path to evaluate your own pair. The USD limit is a
-**per-role ceiling**, not an expected cost or a total-run ceiling. This small
+**per-role ceiling**. This small
 example budget can stop before recovery; disclose changed budgets in comparisons.
 Use development40 for method development and reserve test87 for final evaluation.
 
