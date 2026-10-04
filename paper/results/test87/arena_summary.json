@@ -1,0 +1,107 @@
+{
+  "scores": "mixture-judge-v1",
+  "denominator": 87,
+  "median_includes_failures_as_infinity": true,
+  "p80_definition": "70th ordered cost among all 87 targets; undefined if not finite",
+  "ensemble_members": [
+    "fable",
+    "opus",
+    "astra"
+  ],
+  "series": {
+    "directional": {
+      "ensemble": {
+        "passes": 86,
+        "median_cost_bits": 43.150557438039634,
+        "p80_cost_bits": 57.76431619999966
+      },
+      "opus": {
+        "passes": 84,
+        "median_cost_bits": 47.43127841989783,
+        "p80_cost_bits": 86.12764232539776
+      },
+      "fable": {
+        "passes": 81,
+        "median_cost_bits": 52.21879759464311,
+        "p80_cost_bits": 72.03704732444854
+      },
+      "astra": {
+        "passes": 82,
+        "median_cost_bits": 57.604498319944895,
+        "p80_cost_bits": 93.83663707145843
+      },
+      "glm": {
+        "passes": 74,
+        "median_cost_bits": 59.89204511613856,
+        "p80_cost_bits": 108.25489146325255
+      },
+      "sol": {
+        "passes": 82,
+        "median_cost_bits": 68.70477581974318,
+        "p80_cost_bits": 107.46674100466348
+      }
+    },
+    "essence": {
+      "ensemble": {
+        "passes": 85,
+        "median_cost_bits": 53.771236812998765,
+        "p80_cost_bits": 80.17273620169568
+      },
+      "opus": {
+        "passes": 74,
+        "median_cost_bits": 68.27644120859067,
+        "p80_cost_bits": 138.86815350011085
+      },
+      "fable": {
+        "passes": 71,
+        "median_cost_bits": 67.81797794481453,
+        "p80_cost_bits": 102.08343812843648
+      },
+      "astra": {
+        "passes": 77,
+        "median_cost_bits": 69.44911608399846,
+        "p80_cost_bits": 108.78199688492948
+      },
+      "glm": {
+        "passes": 56,
+        "median_cost_bits": 100.23034381081257,
+        "p80_cost_bits": null
+      },
+      "sol": {
+        "passes": 76,
+        "median_cost_bits": 92.39446467217314,
+        "p80_cost_bits": 139.51470229165244
+      }
+    }
+  },
+  "directional_bar_order": [
+    "ensemble",
+    "opus",
+    "fable",
+    "astra",
+    "glm",
+    "sol"
+  ],
+  "directional_p80_bar_order": [
+    "ensemble",
+    "fable",
+    "opus",
+    "astra",
+    "sol"
+  ],
+  "essence_bar_order": [
+    "ensemble",
+    "fable",
+    "opus",
+    "astra",
+    "sol",
+    "glm"
+  ],
+  "essence_p80_bar_order": [
+    "ensemble",
+    "fable",
+    "astra",
+    "opus",
+    "sol"
+  ]
+}

@@ -1,0 +1,4 @@
+# Integrity hashes are over exact bytes, including benchmark and patch inputs.
+* -text
+*.csv whitespace=cr-at-eol
+*.patch -whitespace

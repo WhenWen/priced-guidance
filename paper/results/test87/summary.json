@@ -1,0 +1,79 @@
+{
+  "accounting": [
+    "occurrence-prior-v2",
+    "mixture-judge-v1",
+    "promotion-cost-v1"
+  ],
+  "denominator": 87,
+  "ensemble_members": [
+    "fable",
+    "opus",
+    "astra"
+  ],
+  "series": {
+    "directional": {
+      "astra": {
+        "passes": 82,
+        "median_cost_bits": 57.604498319944895,
+        "p80_cost_bits": 93.83663707145843
+      },
+      "ensemble": {
+        "passes": 86,
+        "median_cost_bits": 43.150557438039634,
+        "p80_cost_bits": 57.76431619999966
+      },
+      "fable": {
+        "passes": 81,
+        "median_cost_bits": 52.21879759464311,
+        "p80_cost_bits": 72.03704732444854
+      },
+      "glm": {
+        "passes": 74,
+        "median_cost_bits": 59.89204511613856,
+        "p80_cost_bits": 108.25489146325255
+      },
+      "opus": {
+        "passes": 84,
+        "median_cost_bits": 47.43127841989783,
+        "p80_cost_bits": 86.12764232539776
+      },
+      "sol": {
+        "passes": 82,
+        "median_cost_bits": 68.70477581974318,
+        "p80_cost_bits": 107.46674100466348
+      }
+    },
+    "essence": {
+      "astra": {
+        "passes": 77,
+        "median_cost_bits": 71.60723115787023,
+        "p80_cost_bits": 111.02710937697195
+      },
+      "ensemble": {
+        "passes": 85,
+        "median_cost_bits": 55.813355329309616,
+        "p80_cost_bits": 82.3301259693407
+      },
+      "fable": {
+        "passes": 71,
+        "median_cost_bits": 69.94709387929606,
+        "p80_cost_bits": 104.2850519113936
+      },
+      "glm": {
+        "passes": 56,
+        "median_cost_bits": 102.37395931498922,
+        "p80_cost_bits": null
+      },
+      "opus": {
+        "passes": 74,
+        "median_cost_bits": 70.43455628246244,
+        "p80_cost_bits": 141.33075953758004
+      },
+      "sol": {
+        "passes": 76,
+        "median_cost_bits": 94.65407673391071,
+        "p80_cost_bits": 141.8613117715607
+      }
+    }
+  }
+}

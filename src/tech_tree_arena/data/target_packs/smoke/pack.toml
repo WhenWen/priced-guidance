@@ -1,0 +1,6 @@
+schema_version = 1
+name = "smoke"
+kind = "public"
+protocol = "idea-recovery-v1"
+target_count = 1
+

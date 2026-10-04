@@ -1,0 +1,97 @@
+diff --git a/codex-rs/context-fragments/src/additional_context.rs b/codex-rs/context-fragments/src/additional_context.rs
+index 9c27336..899d563 100644
+--- a/codex-rs/context-fragments/src/additional_context.rs
++++ b/codex-rs/context-fragments/src/additional_context.rs
+@@ -97,6 +97,14 @@ fn additional_context_body(key: &str, value: &str) -> String {
+ }
+ 
+ fn additional_context_developer_body(key: &str, value: &str) -> String {
++    // The bounded Arena broker supplies the complete per-call schema here.
++    // Silently truncating that schema would weaken the Generator contract.
++    if key == "idea_arena_call"
++        && std::env::var("IDEA_ARENA_PROMPT_CACHE_KEY").is_ok()
++        && value.len() <= 32_000
++    {
++        return format!("<{key}>{value}</{key}>");
++    }
+     let value = truncate_middle_with_token_budget(value, MAX_ADDITIONAL_CONTEXT_VALUE_TOKENS).0;
+     format!("<{key}>{value}</{key}>")
+ }
+diff --git a/codex-rs/core/src/client.rs b/codex-rs/core/src/client.rs
+index 9f03c93..582f784 100644
+--- a/codex-rs/core/src/client.rs
++++ b/codex-rs/core/src/client.rs
+@@ -542,6 +542,18 @@ impl ModelClient {
+             return prompt_cache_key.clone();
+         }
+ 
++        // The Arena broker owns this opt-in identity across immutable forks.
++        // It affects cache routing only; native session/turn IDs stay distinct.
++        if let Ok(key) = std::env::var("IDEA_ARENA_PROMPT_CACHE_KEY")
++            && !key.is_empty()
++            && key.len() <= 64
++            && key
++                .bytes()
++                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
++        {
++            return key;
++        }
++
+         if let SessionSource::Internal(source) = &self.state.session_source
+             && let Some(parent_thread_id) = responses_metadata.parent_thread_id
+         {
+@@ -935,17 +947,23 @@ impl ModelClient {
+     ) -> Result<ResponsesApiRequest> {
+         let mut input = prompt.get_formatted_input_for_request(model_info.use_responses_lite);
+         let is_openai = self.state.provider.info().is_openai();
++        // Arena semantic calls have no tool capability. Omit regenerated tool
++        // definitions (including workspace-dependent descriptions) at the prefix.
++        let arena_cache = std::env::var("IDEA_ARENA_PROMPT_CACHE_KEY").is_ok();
++        let prompt_tools = if arena_cache { &[][..] } else { &prompt.tools };
+         let (instructions, tools) = if model_info.use_responses_lite {
+             // These prompt-only items are rebuilt on every request. Hash their visible payloads
+             // within the thread so retries and resumed sessions preserve their identity.
+-            let prefix_namespace = Uuid::new_v5(
+-                &Uuid::NAMESPACE_OID,
+-                self.state.thread_id.to_string().as_bytes(),
+-            );
++            let prefix_identity = if arena_cache {
++                self.prompt_cache_key(responses_metadata)
++            } else {
++                self.state.thread_id.to_string()
++            };
++            let prefix_namespace = Uuid::new_v5(&Uuid::NAMESPACE_OID, prefix_identity.as_bytes());
+             let tools = if self.state.provider.capabilities().namespace_tools {
+-                create_tools_json_for_responses_lite(&prompt.tools)?
++                create_tools_json_for_responses_lite(prompt_tools)?
+             } else {
+-                create_tools_json_for_responses_api(&prompt.tools)?
++                create_tools_json_for_responses_api(prompt_tools)?
+             };
+             let mut prefix = vec![ResponseItem::AdditionalTools {
+                 id: Some(ResponseItemId::with_suffix(
+@@ -970,7 +988,7 @@ impl ModelClient {
+         } else {
+             (
+                 prompt.base_instructions.text.clone(),
+-                Some(create_tools_raw_json_for_responses_api(&prompt.tools)?.into()),
++                Some(create_tools_raw_json_for_responses_api(prompt_tools)?.into()),
+             )
+         };
+         if !is_openai {
+@@ -1029,6 +1047,15 @@ impl ModelClient {
+             client_metadata: Some(responses_metadata.client_metadata()),
+             access_programs: None,
+         };
++        // Opt-in diagnostics for synthetic cache probes, without auth headers.
++        if std::env::var("IDEA_ARENA_TRACE_PROMPT").as_deref() == Ok("1") {
++            use std::io::Write;
++            let mut trace = std::fs::OpenOptions::new()
++                .create(true)
++                .append(true)
++                .open("prompt-requests.jsonl")?;
++            writeln!(trace, "{}", serde_json::to_string(&request)?)?;
++        }
+         Ok(request)
+     }
+ 

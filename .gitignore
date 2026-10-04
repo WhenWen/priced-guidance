@@ -1,0 +1,30 @@
+# Credentials and local state
+.env
+.env.*
+!.env.example
+.idea-arena/
+.auth/
+auth.json
+credentials*.json
+*.pem
+*.key
+# Generated experiments and caches
+runs/
+generated/
+artifacts/
+account-*.json
+*.private.html
+# Python/build/editor files
+.venv*/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+.DS_Store
+.idea/
+.vscode/

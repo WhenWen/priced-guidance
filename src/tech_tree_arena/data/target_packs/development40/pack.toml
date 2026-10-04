@@ -1,0 +1,8 @@
+schema_version = 1
+name = "development40"
+kind = "development"
+protocol = "idea-recovery-v1"
+target_count = 40
+taxonomy_sha256 = "cc23701f7c16c6444acb9642f8cbeede5c62fbb923d8f08d253d7e9072b78250"
+taxonomy_rankings_sha256 = "d14864dc59147594082940bf544431cf68667cd00a0b453f25acd0cd668b5456"
+gold_tree_sha256 = "01e6768483e13c1b8a1b482a4a41412daa1fb1feba7a02145b52ccc79aea4aba"

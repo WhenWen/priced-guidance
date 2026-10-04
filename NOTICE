@@ -1,0 +1,9 @@
+Priced Guidance contains an MIT-licensed research implementation and benchmark
+metadata derived from third-party papers. The MIT grant applies to repository
+code and contributor-authored documentation; it does not relicense source papers,
+model services, or third-party software. Each benchmark record identifies its
+source paper by arXiv ID. Retain that attribution when redistributing summaries.
+
+Optional native backends download upstream Codex or Claude Code separately. The
+upstream license and service terms apply to those components. No native binaries,
+account credentials, or original arXiv source archives are distributed here.

@@ -1,0 +1,19 @@
+name: Offline tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev --extra providers --python '${{ matrix.python-version }}'
+      - run: uv run --no-sync python -m pytest -q
+      - run: uv run --no-sync idea-arena doctor
+      - run: uv run --no-sync python tools/validate_target_pack.py development40 test87
+      - run: uv run --no-sync idea-arena run submissions/examples/minimal_pair --target-pack smoke --seed 1 --runs-dir generated/smoke --no-html-report
+      - run: uv build

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idea-arena"
+version = "0.1.0"
+description = "Standalone generator-oracle arena for information-priced idea recovery"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "openai>=1.75,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+]
+providers = [
+    "anthropic>=0.52,<1",
+]
+
+[project.scripts]
+idea-arena = "tech_tree_arena.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["tech_tree_arena*"]
+
+[tool.setuptools.package-data]
+tech_tree_arena = [
+    "data/**/*.json",
+    "data/**/*.toml",
+    "data/submission_templates/**/*",
+    "templates/**/*.html",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+addopts = "-ra"

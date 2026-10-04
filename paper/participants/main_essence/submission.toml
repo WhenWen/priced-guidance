@@ -1,0 +1,28 @@
+schema_version = 1
+name = "reference-pair-submit8"
+version = "1.18.2"
+protocol = "idea-recovery-v1"
+generator = "participant.generator:Generator"
+oracle = "participant.oracle:Oracle"
+
+[modules]
+shared = [
+  "README.md",
+  "participant/__init__.py",
+  "participant/generator.py",
+  "participant/oracle.py",
+  "participant/pair.py",
+  "participant/stages/__init__.py",
+]
+directional = [
+  "participant/stages/directional.py",
+  "participant/stages/directional_channels.py",
+]
+essence = [
+  "participant/stages/essence.py",
+  "participant/stages/essence_channels.py",
+]
+strict = [
+  "participant/stages/strict.py",
+  "participant/stages/strict_channels.py",
+]

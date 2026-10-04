@@ -1,0 +1,8 @@
+graft submissions/reference_pair
+graft submissions/examples/minimal_pair
+global-exclude __pycache__ *.py[cod]
+graft tools
+graft docs
+graft paper
+graft results
+include LICENSE NOTICE CONTRIBUTING.md .env.example

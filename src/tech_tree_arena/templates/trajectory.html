@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{TITLE}}</title>
+  <style>
+    :root {
+      --bg: #f3f1eb;
+      --surface: rgba(255,255,255,.78);
+      --surface-solid: #fffefa;
+      --surface-2: #ebe8df;
+      --ink: #1c2522;
+      --muted: #66716c;
+      --line: rgba(30,49,43,.13);
+      --accent: #0e766e;
+      --accent-2: #e95f3f;
+      --accent-soft: #dff1ed;
+      --success: #25754c;
+      --danger: #b6463d;
+      --warning: #a56513;
+      --shadow: 0 18px 50px rgba(27,42,37,.09);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    html[data-theme="dark"] {
+      --bg: #111816;
+      --surface: rgba(25,35,32,.82);
+      --surface-solid: #19231f;
+      --surface-2: #23302b;
+      --ink: #edf2ef;
+      --muted: #9ba8a2;
+      --line: rgba(221,238,231,.12);
+      --accent: #71d2c3;
+      --accent-2: #ff8b6f;
+      --accent-soft: #173b35;
+      --success: #7bd5a2;
+      --danger: #ff9188;
+      --warning: #e7b76f;
+      --shadow: 0 20px 55px rgba(0,0,0,.28);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 5% -10%, rgba(14,118,110,.16), transparent 34rem),
+        radial-gradient(circle at 100% 15%, rgba(233,95,63,.11), transparent 30rem),
+        var(--bg);
+      font: 14px/1.5 var(--sans);
+      min-height: 100vh;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .topbar {
+      height: 64px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 82%, transparent);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 720; letter-spacing: -.02em; }
+    .brand-mark {
+      width: 31px; height: 31px; border-radius: 10px;
+      display: grid; place-items: center; color: white;
+      background: linear-gradient(145deg, #0e766e, #33a895);
+      box-shadow: 0 7px 16px rgba(14,118,110,.24);
+      font: 700 13px var(--mono);
+    }
+    .top-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+    .icon-button {
+      width: 35px; height: 35px; border: 1px solid var(--line); border-radius: 11px;
+      display: grid; place-items: center; background: var(--surface); cursor: pointer;
+    }
+    .shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: calc(100vh - 64px); }
+    .sidebar {
+      border-right: 1px solid var(--line); padding: 26px 18px;
+      position: sticky; top: 64px; height: calc(100vh - 64px); overflow: auto;
+    }
+    .eyebrow { color: var(--muted); font-size: 10px; font-weight: 780; letter-spacing: .12em; text-transform: uppercase; }
+    .run-list { display: grid; gap: 8px; margin-top: 12px; }
+    .run-button {
+      width: 100%; padding: 12px; text-align: left; border: 1px solid transparent;
+      border-radius: 13px; background: transparent; cursor: pointer;
+    }
+    .run-button:hover { background: var(--surface); }
+    .run-button.active { background: var(--surface-solid); border-color: var(--line); box-shadow: 0 7px 24px rgba(27,42,37,.06); }
+    .run-button strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .run-button span { color: var(--muted); font-size: 11px; }
+    .sidebar-note { margin-top: 28px; padding: 14px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 13px; font-size: 12px; }
+    .content { width: min(1180px, 100%); padding: 42px clamp(22px, 5vw, 68px) 80px; margin: 0 auto; }
+    .hero { display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 26px; }
+    h1 { margin: 5px 0 8px; font-size: clamp(29px, 4vw, 48px); line-height: 1.02; letter-spacing: -.045em; }
+    .subtitle { margin: 0; color: var(--muted); max-width: 760px; }
+    .privacy-badge, .status-badge, .chip {
+      display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; white-space: nowrap;
+      border: 1px solid var(--line); background: var(--surface); padding: 5px 9px; font-size: 11px;
+    }
+    .privacy-badge.private { color: var(--danger); }
+    .summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; margin-bottom: 18px; }
+    .metric { padding: 17px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 7px 25px rgba(27,42,37,.035); }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .metric-value { margin-top: 5px; font: 700 clamp(18px, 2.4vw, 26px)/1 var(--mono); letter-spacing: -.04em; }
+    .metric-value.pass { color: var(--success); }
+    .metric-value.fail, .metric-value.error { color: var(--danger); }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .chart-panel { padding: 18px 20px 14px; margin-bottom: 18px; }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+    .panel-heading h2 { margin: 0; font-size: 15px; letter-spacing: -.015em; }
+    .chart { width: 100%; height: 150px; display: block; overflow: visible; }
+    .chart-grid { stroke: var(--line); stroke-width: 1; }
+    .chart-path { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+    .chart-area { fill: url(#areaGradient); opacity: .24; }
+    .chart-dot { fill: var(--surface-solid); stroke: var(--accent); stroke-width: 2; }
+    .chart-drop { stroke: var(--accent-2); stroke-dasharray: 4 4; stroke-width: 1.5; }
+    .chart-label { fill: var(--muted); font: 10px var(--mono); }
+    .toolbar {
+      display: flex; align-items: center; gap: 10px; padding: 12px;
+      position: sticky; top: 76px; z-index: 10; margin: 20px 0;
+      background: color-mix(in srgb, var(--surface-solid) 90%, transparent);
+      backdrop-filter: blur(16px);
+    }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap span { position: absolute; left: 12px; top: 9px; color: var(--muted); }
+    .search {
+      width: 100%; height: 38px; padding: 0 12px 0 35px; color: var(--ink);
+      border: 1px solid var(--line); border-radius: 11px; background: var(--bg); outline: none;
+    }
+    .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 17%, transparent); }
+    .filter-group { display: flex; gap: 5px; }
+    .filter-button { border: 0; border-radius: 9px; background: transparent; padding: 8px 10px; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .filter-button.active { color: var(--ink); background: var(--surface-2); }
+    .timeline { position: relative; display: grid; gap: 13px; padding-left: 29px; }
+    .timeline::before { content: ""; position: absolute; left: 10px; top: 13px; bottom: 13px; width: 1px; background: var(--line); }
+    .event-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 9px 30px rgba(27,42,37,.045); overflow: hidden; }
+    .event-card::before { content: ""; position: absolute; left: -25px; top: 25px; width: 9px; height: 9px; border: 3px solid var(--bg); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--line); }
+    .event-card.checkout::before, .event-card.judgement::before { background: var(--accent-2); }
+    .question-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+    .question-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 9px; }
+    .step { color: var(--accent); font: 750 11px var(--mono); }
+    .question-title { margin: 0; font-size: 17px; line-height: 1.4; letter-spacing: -.012em; overflow-wrap: anywhere; }
+    .answer { padding: 15px 20px; display: grid; grid-template-columns: 32px minmax(0,1fr) auto; gap: 11px; align-items: start; background: color-mix(in srgb, var(--accent-soft) 72%, transparent); }
+    .answer-mark { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; color: var(--accent); background: var(--surface-solid); font-weight: 800; }
+    .answer-label { font-weight: 680; overflow-wrap: anywhere; }
+    .answer-id, code { font: 11px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+    .cost { text-align: right; font: 700 12px var(--mono); color: var(--accent); }
+    details.options { border-top: 1px solid var(--line); }
+    details.options summary { list-style: none; padding: 12px 20px; cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; }
+    details.options summary::-webkit-details-marker { display: none; }
+    details.options summary::before { content: "+"; display: inline-block; width: 18px; color: var(--accent); font: 700 14px var(--mono); }
+    details.options[open] summary::before { content: "−"; }
+    .option-list { padding: 0 12px 12px; }
+    .option-row { display: grid; grid-template-columns: minmax(0,1fr) 78px 65px; gap: 12px; align-items: start; padding: 11px 8px; border-radius: 9px; border-bottom: 1px solid var(--line); }
+    .option-row:last-child { border-bottom: 0; }
+    .option-row.selected { background: var(--accent-soft); }
+    .option-label { min-width: 0; overflow-wrap: anywhere; }
+    .option-prob, .option-bits { text-align: right; color: var(--muted); font: 11px var(--mono); }
+    .payload { margin: 0 20px 16px; }
+    .payload summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+    pre { margin: 9px 0 0; max-height: 360px; overflow: auto; padding: 13px; color: var(--ink); background: var(--surface-2); border-radius: 11px; font: 11px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .control-card { padding: 17px 20px; }
+    .control-title { margin: 0 0 5px; font-size: 14px; }
+    .control-copy { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+    .submission-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 13px; }
+    .idea { padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-solid); }
+    .idea.pass { border-color: color-mix(in srgb, var(--success) 48%, var(--line)); background: color-mix(in srgb, var(--success) 7%, var(--surface-solid)); }
+    .idea.fail { opacity: .82; }
+    .idea-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .idea-text { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .reason { margin-top: 9px; color: var(--muted); font-size: 11px; }
+    .comparison { margin-bottom: 18px; overflow: auto; }
+    .comparison table { width: 100%; border-collapse: collapse; }
+    .comparison th, .comparison td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .comparison th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+    .hidden { display: none !important; }
+    .footer { margin-top: 34px; text-align: center; color: var(--muted); font-size: 11px; }
+    @media (max-width: 900px) {
+      .shell { display: block; }
+      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 18px; }
+      .run-list { display: flex; overflow-x: auto; }
+      .run-button { min-width: 210px; }
+      .sidebar-note { display: none; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .hero { align-items: start; flex-direction: column; }
+    }
+    @media (max-width: 640px) {
+      .topbar { padding: 0 14px; }
+      .top-meta > span { display: none; }
+      .content { padding: 28px 14px 60px; }
+      .toolbar { align-items: stretch; flex-direction: column; top: 70px; }
+      .filter-group { overflow-x: auto; }
+      .timeline { padding-left: 18px; }
+      .timeline::before { left: 3px; }
+      .event-card::before { left: -20px; }
+      .answer { grid-template-columns: 29px minmax(0,1fr); }
+      .cost { grid-column: 2; text-align: left; }
+      .option-row { grid-template-columns: minmax(0,1fr) 68px; }
+      .option-bits { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">K</span><span>{{TITLE}}</span></div>
+    <div class="top-meta"><span>Generated {{GENERATED_AT}}</span><button class="icon-button" id="themeToggle" aria-label="Toggle color theme">◐</button></div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="eyebrow">Trajectories</div>
+      <nav class="run-list" id="runList" aria-label="Trajectory selection"></nav>
+      <div class="sidebar-note">Press <strong>/</strong> to search. Public event streams are used by default; private reports are marked in the header and should not be shared.</div>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <div><div class="eyebrow" id="runEyebrow"></div><h1 id="runTitle"></h1><p class="subtitle" id="runSubtitle"></p></div>
+        <span class="privacy-badge" id="privacyBadge"></span>
+      </section>
+      <section class="summary-grid" id="summaryGrid"></section>
+      <section class="panel comparison hidden" id="comparison"></section>
+      <section class="panel chart-panel">
+        <div class="panel-heading"><h2>Active-path information cost</h2><span class="chip" id="chartCaption"></span></div>
+        <div id="chart"></div>
+      </section>
+      <section class="panel toolbar">
+        <label class="search-wrap"><span>⌕</span><input class="search" id="search" type="search" placeholder="Search questions, answers, IDs…" autocomplete="off"></label>
+        <div class="filter-group" id="filters">
+          <button class="filter-button active" data-filter="all">All</button>
+          <button class="filter-button" data-filter="question">Q&A</button>
+          <button class="filter-button" data-filter="submission">Submissions</button>
+          <button class="filter-button" data-filter="checkout">Checkouts</button>
+        </div>
+      </section>
+      <section class="timeline" id="timeline"></section>
+      <div class="empty hidden" id="empty">No trajectory events match the current filter.</div>
+      <footer class="footer" id="footer"></footer>
+    </main>
+  </div>
+  <script id="trajectoryData" type="application/json">{{TRAJECTORY_DATA}}</script>
+  <script>
+    "use strict";
+    const report = JSON.parse(document.getElementById("trajectoryData").textContent);
+    const state = { index: 0, filter: "all", query: "" };
+    const $ = selector => document.querySelector(selector);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);
+    const number = value => Number.isFinite(Number(value)) ? Number(value) : null;
+    const fixed = (value, digits=3) => number(value) === null ? "—" : Number(value).toFixed(digits);
+    const shortId = value => { const text = String(value ?? ""); return text.length > 22 ? text.slice(0, 12) + "…" + text.slice(-7) : text; };
+    const jsonText = value => JSON.stringify(value, null, 2);
+    const humanizeToken = value => {
+      const text = String(value ?? "").replace(/[_-]+/g, " ").trim();
+      return text ? text[0].toUpperCase() + text.slice(1) : "";
+    };
+
+    function payloadLabel(payload, fallback="") {
+      if (typeof payload === "string" || typeof payload === "number") return String(payload);
+      if (!payload || typeof payload !== "object") return fallback;
+      if (payload.kind === "retry" && payload.channel) {
+        return `Retry ${humanizeToken(payload.channel).toLowerCase()} channel`;
+      }
+      for (const key of ["term", "category", "word", "fragment", "fact", "relation", "draft", "label", "text", "value", "name", "axis", "answer", "prefix", "mode", "action"]) {
+        if (payload[key] !== undefined && payload[key] !== "") {
+          const text = String(payload[key]);
+          return text.length > 300 ? text.slice(0, 300) + "…" : text;
+        }
+      }
+      const controlLabels = {
+        keyword_category_retry: "None of these categories — generate another slate",
+        keyword_prefix_request: "Request a keyword prefix",
+        keyword_retry: "Retry keyword recovery",
+      };
+      if (payload.kind) return controlLabels[payload.kind] || humanizeToken(payload.kind);
+      return fallback || jsonText(payload);
+    }
+
+    function eventModel(trajectory) {
+      const events = [...(trajectory.events || [])].sort((a,b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+      const questions = new Map();
+      const items = [];
+      let submissionItem = null;
+      for (const event of events) {
+        if (event.kind === "question") {
+          const item = { type: "question", event, decision: null, cost: null };
+          questions.set(event.question_id, item); items.push(item);
+        } else if (event.kind === "oracle_decision") {
+          const item = questions.get(event.question_id); if (item) item.decision = event;
+        } else if (event.kind === "choice_cost") {
+          const item = questions.get(event.question_id); if (item) item.cost = event;
+        } else if (event.kind === "checkout") {
+          items.push({ type: "checkout", event });
+        } else if (event.kind === "submission") {
+          submissionItem = { type: "submission", event, judgement: null }; items.push(submissionItem);
+        } else if (event.kind === "submission_judged") {
+          if (submissionItem && submissionItem.event.attempt === event.attempt) submissionItem.judgement = event;
+          else items.push({ type: "judgement", event });
+        } else if (event.kind === "run_finished") {
+          items.push({ type: "finish", event });
+        }
+      }
+      return { events, items, questions: [...questions.values()] };
+    }
+
+    function summary(trajectory, model) {
+      const score = trajectory.score || {}, status = trajectory.status || {}, manifest = trajectory.manifest || {};
+      const finish = [...model.events].reverse().find(event => event.kind === "run_finished") || {};
+      const finalStatus = score.status || status.result_status || finish.status || status.status || "recorded";
+      const k = number(score.K ?? score.k ?? status.K ?? status.k ?? finish.K ?? finish.k ?? [...model.events].reverse().find(e => e.path_k !== undefined)?.path_k);
+      const submissions = number(score.submission_attempts ?? status.submissions) ?? model.events.filter(e => e.kind === "submission").length;
+      const checkouts = number(score.checkouts ?? status.checkouts) ?? model.events.filter(e => e.kind === "checkout").length;
+      const roleUsage = trajectory.usage || {};
+      const apiCost = Object.values(roleUsage).reduce((total, row) => total + (number(row?.model_usage?.cost_usd) || 0), 0);
+      return {
+        status: finalStatus, k, submissions, checkouts, apiCost,
+        questions: model.questions.length,
+        score: number(score.score ?? finish.score),
+        submission: manifest.submission_name || "unknown submission",
+        target: manifest.target_id || manifest.target_pack || "trajectory",
+        judge: manifest.judge || "unknown judge",
+        accountingVersion: score.accounting_version || manifest.accounting_version || "recorded",
+        repriced: Boolean(score.repriced_from),
+      };
+    }
+
+    function renderRunList() {
+      $("#runList").innerHTML = report.trajectories.map((trajectory, index) => {
+        const model = eventModel(trajectory), info = summary(trajectory, model);
+        return `<button class="run-button ${index === state.index ? "active" : ""}" data-run="${index}"><strong>${esc(trajectory.label || trajectory.id)}</strong><span>${esc(info.status)} · ${info.questions} Q · K ${fixed(info.k, 2)}</span></button>`;
+      }).join("");
+      document.querySelectorAll("[data-run]").forEach(button => button.addEventListener("click", () => { state.index = Number(button.dataset.run); state.query = ""; $("#search").value = ""; render(); }));
+    }
+
+    function renderSummary(info) {
+      const metrics = [
+        ["Result", info.status, info.status], ["Final K", fixed(info.k, 3), ""], ["Questions", info.questions, ""],
+        ["Attempts / checkouts", `${info.submissions} / ${info.checkouts}`, ""], ["API cost", info.apiCost ? `$${fixed(info.apiCost, 2)}` : "—", ""]
+      ];
+      $("#summaryGrid").innerHTML = metrics.map(([label,value,klass]) => `<div class="metric"><div class="metric-label">${esc(label)}</div><div class="metric-value ${esc(klass)}">${esc(value)}</div></div>`).join("");
+      if (info.repriced) $("#summaryGrid").innerHTML += `<p class="control-copy">Final K uses ${esc(info.accountingVersion)}. Timeline events and their costs are historical audit records.</p>`;
+    }
+
+    function renderComparison() {
+      const panel = $("#comparison");
+      if (report.trajectories.length < 2) { panel.classList.add("hidden"); return; }
+      const rows = report.trajectories.map(t => { const m=eventModel(t), s=summary(t,m); return `<tr><td>${esc(t.label || t.id)}</td><td>${esc(s.status)}</td><td>${s.questions}</td><td>${fixed(s.k,3)}</td><td>${s.submissions}</td><td>${s.checkouts}</td><td>${s.apiCost ? "$"+fixed(s.apiCost,2) : "—"}</td></tr>`; }).join("");
+      panel.innerHTML = `<div class="panel-heading" style="padding:16px 16px 0"><h2>Trajectory comparison</h2></div><table><thead><tr><th>Run</th><th>Status</th><th>Q</th><th>K</th><th>Attempts</th><th>Checkouts</th><th>API cost</th></tr></thead><tbody>${rows}</tbody></table>`;
+      panel.classList.remove("hidden");
+    }
+
+    function kPoints(model) {
+      const points = [{index:0,k:0,kind:"start"}];
+      for (const event of model.events) {
+        if (["choice_cost","checkout","submission_judged"].includes(event.kind) && number(event.path_k) !== null) points.push({index:points.length,k:Number(event.path_k),kind:event.kind});
+      }
+      return points;
+    }
+
+    function renderChart(model) {
+      const points = kPoints(model), width=940, height=150, left=34, right=10, top=12, bottom=24;
+      const maxK = Math.max(1, ...points.map(p => p.k)), maxX = Math.max(1, points.length-1);
+      const x = i => left + i/maxX*(width-left-right), y = k => top + (1-k/maxK)*(height-top-bottom);
+      const line = points.map((p,i) => `${i?"L":"M"}${x(i).toFixed(1)},${y(p.k).toFixed(1)}`).join(" ");
+      const area = `${line} L${x(points.length-1)},${height-bottom} L${left},${height-bottom} Z`;
+      const grids = [0,.5,1].map(f => `<line class="chart-grid" x1="${left}" y1="${y(maxK*f)}" x2="${width-right}" y2="${y(maxK*f)}"/><text class="chart-label" x="0" y="${y(maxK*f)+3}">${(maxK*f).toFixed(0)}</text>`).join("");
+      const drops = points.map((p,i) => p.kind === "checkout" && i ? `<line class="chart-drop" x1="${x(i)}" y1="${y(points[i-1].k)}" x2="${x(i)}" y2="${y(p.k)}"/>` : "").join("");
+      const dots = points.map((p,i) => `<circle class="chart-dot" cx="${x(i)}" cy="${y(p.k)}" r="${p.kind === "checkout" ? 4 : 2.5}"><title>${esc(p.kind)} · K ${p.k.toFixed(3)}</title></circle>`).join("");
+      $("#chart").innerHTML = `<svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="K over trajectory decisions"><defs><linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>${grids}<path class="chart-area" d="${area}"/><path class="chart-path" d="${line}"/>${drops}${dots}<text class="chart-label" x="${left}" y="${height-5}">start</text><text class="chart-label" text-anchor="end" x="${width-right}" y="${height-5}">${Math.max(0,points.length-1)} priced events</text></svg>`;
+      $("#chartCaption").textContent = `${points.length-1} cost events · max K ${maxK.toFixed(2)}`;
+    }
+
+    function renderOptions(question, chosenId) {
+      const options = question?.options || [];
+      if (!options.length) return "";
+      const rows = options.map(option => {
+        const p = number(option.probability), bits = p && p > 0 ? -Math.log2(p) : null;
+        const selected = option.option_id === chosenId;
+        return `<div class="option-row ${selected ? "selected" : ""}"><div class="option-label"><strong>${selected ? "✓ " : ""}${esc(payloadLabel(option.public_payload, option.option_id))}</strong><div class="answer-id">${esc(option.option_id)}${option.kind === "submit" ? " · SUBMIT" : ""}</div></div><div class="option-prob">${p === null ? "—" : (p*100).toFixed(p < .001 ? 4 : 2)+"%"}</div><div class="option-bits">${bits === null ? "—" : bits.toFixed(3)+" b"}</div></div>`;
+      }).join("");
+      return `<details class="options"><summary>Show all ${options.length} options</summary><div class="option-list">${rows}</div></details>`;
+    }
+
+    function renderQuestion(item, step) {
+      const event=item.event, question=event.question || {}, decision=item.decision?.decision || {}, chosenId=decision.option_id;
+      const option=(question.options || []).find(row => row.option_id === chosenId), label=option ? payloadLabel(option.public_payload, chosenId) : (chosenId ? chosenId : "Awaiting Oracle decision");
+      const cost=item.cost || {}, delta=(number(cost.information_bits)||0)+(number(cost.branch_bits)||0);
+      const kind=option?.public_payload?.question_kind || option?.public_payload?.kind || "question";
+      const search=[question.question,label,chosenId,event.question_id,kind,jsonText(question.options || [])].join(" ").toLowerCase();
+      return `<article class="event-card searchable" data-type="question" data-search="${esc(search)}"><div class="question-head"><div class="question-meta"><span class="step">Q${step}</span><span class="chip">${esc(humanizeToken(kind))}</span><span class="chip">K ${fixed(event.path_k,3)} → ${fixed(cost.path_k ?? event.path_k,3)}</span><code title="${esc(event.question_id)}">${esc(shortId(event.question_id))}</code></div><h3 class="question-title">${esc(question.question || "Untitled question")}</h3></div><div class="answer"><div class="answer-mark">A</div><div><div class="answer-label">${esc(label)}</div><div class="answer-id">${esc(chosenId || "pending")}</div></div><div class="cost">${item.cost ? `+${delta.toFixed(3)} bit` : "pending"}${number(cost.branch_bits) ? `<br><span style="color:var(--muted)">${fixed(cost.branch_bits,3)} branch</span>` : ""}</div></div>${renderOptions(question,chosenId)}${decision.public_payload ? `<details class="payload"><summary>Resolved choice payload</summary><pre>${esc(jsonText(decision.public_payload))}</pre></details>` : ""}</article>`;
+    }
+
+    function renderCheckout(item) {
+      const e=item.event, search=jsonText(e).toLowerCase();
+      return `<article class="event-card checkout control-card searchable" data-type="checkout" data-search="${esc(search)}"><div class="question-meta"><span class="step">CHECKOUT</span><span class="chip">K restored to ${fixed(e.path_k,3)}</span>${number(e.branch_bits) ? `<span class="chip">+${fixed(e.branch_bits,3)} branch bit</span>` : ""}</div><h3 class="control-title">Semantic rewind</h3><p class="control-copy"><code>${esc(shortId(e.source_question_id))}</code> → <code>${esc(shortId(e.target_question_id))}</code></p></article>`;
+    }
+
+    function verdictMap(judgement) {
+      const map=new Map(); for (const verdict of judgement?.verdicts || []) map.set(verdict.idea_id,verdict); return map;
+    }
+    function reasonText(reason) {
+      if (!reason) return ""; try { const parsed=JSON.parse(reason); if (Array.isArray(parsed.rounds)) return `Judge ${parsed.judge_passes}/${parsed.judge_repeats}: ${parsed.rounds.map((row,index) => `#${index+1} ${row.passed ? "PASS" : "miss"}${row.private_reason ? ` — ${row.private_reason}` : ""}`).join(" | ")}`; return parsed.reason || reason; } catch { return reason; }
+    }
+    function ideaText(content) {
+      if (typeof content === "string") return content;
+      if (!content || typeof content !== "object") return String(content ?? "");
+      const primary=content.setting_and_object || content.answer || jsonText(content);
+      const findings=Array.isArray(content.findings) && content.findings.length ? `\n\nFindings:\n• ${content.findings.join("\n• ")}` : "";
+      return String(primary)+findings;
+    }
+    function renderSubmission(item) {
+      const e=item.event, judgement=item.judgement, verdicts=verdictMap(judgement), ideas=e.submission?.ideas || [];
+      const cards=ideas.map(idea => { const verdict=verdicts.get(idea.idea_id), klass=verdict ? (verdict.passed ? "pass" : "fail") : ""; return `<div class="idea ${klass}"><div class="idea-head"><strong>${esc(idea.idea_id)}</strong><span class="chip">p ${fixed(idea.probability,4)}${verdict ? (verdict.passed ? " · PASS" : " · miss") : ""}</span></div><div class="idea-text">${esc(ideaText(idea.content))}</div>${verdict?.private_reason ? `<div class="reason">${esc(reasonText(verdict.private_reason))}</div>` : ""}</div>`; }).join("");
+      const status=judgement?.status || "pending judgement", matched=(judgement?.matched_idea_ids || []).join(", ") || "none";
+      const pointer=number(judgement?.submission_bits), repeat=number(judgement?.repeat_bits), cost=judgement ? `${pointer !== null ? ` + ${pointer.toFixed(3)} pointer` : ""}${repeat !== null ? ` + ${repeat.toFixed(3)} repeat` : ""}` : "";
+      const search=[status,matched,jsonText(e.submission || {})].join(" ").toLowerCase();
+      return `<article class="event-card judgement control-card searchable" data-type="submission" data-search="${esc(search)}"><div class="question-meta"><span class="step">SUBMISSION ${esc(e.attempt)}</span><span class="status-badge">${esc(status)}</span><span class="chip">K ${fixed(e.path_k,3)}${cost}</span>${judgement?.judge_repeats ? `<span class="chip">Judge ${esc(judgement.judge_passes)}/${esc(judgement.judge_repeats)}</span>` : ""}</div><h3 class="control-title">Candidate slate</h3><p class="control-copy">Matched: ${esc(matched)}${judgement?.passing_mass ? ` · passing mass ${esc(judgement.passing_mass)}` : ""}</p><div class="submission-grid">${cards}</div></article>`;
+    }
+
+    function renderFinish(item) {
+      const e=item.event, verdicts=e.verdicts || [], matched=(e.matched_idea_ids || []).join(", ") || "none";
+      const verdictRows=verdicts.map(verdict => `<span class="chip">${esc(verdict.idea_id)} · ${verdict.passed ? "PASS" : "miss"}</span>`).join("");
+      const search=[e.status,matched,jsonText(verdicts)].join(" ").toLowerCase();
+      return `<article class="event-card judgement control-card searchable" data-type="submission" data-search="${esc(search)}"><div class="question-meta"><span class="step">FINAL RESULT</span><span class="status-badge">${esc(e.status || "finished")}</span><span class="chip">K ${fixed(e.K ?? e.k,3)}</span>${number(e.submission_bits) !== null ? `<span class="chip">${fixed(e.submission_bits,3)} pointer bit</span>` : ""}${number(e.repeat_bits) !== null ? `<span class="chip">${fixed(e.repeat_bits,3)} repeat bit</span>` : ""}${e.judge_repeats ? `<span class="chip">Judge ${esc(e.judge_passes)}/${esc(e.judge_repeats)}</span>` : ""}</div><h3 class="control-title">Matched ideas: ${esc(matched)}</h3><p class="control-copy">Passing mass ${esc(e.passing_mass ?? "—")}${number(e.score) !== null ? ` · score ${Number(e.score).toExponential(3)}` : ""}</p>${verdictRows ? `<div class="question-meta" style="margin-top:12px">${verdictRows}</div>` : ""}</article>`;
+    }
+
+    function renderOther(item) {
+      const e=item.event, type=item.type === "judgement" ? "submission" : "all";
+      return `<article class="event-card control-card searchable" data-type="${type}" data-search="${esc(jsonText(e).toLowerCase())}"><div class="question-meta"><span class="step">${esc(String(e.kind || item.type).toUpperCase())}</span>${e.status ? `<span class="status-badge">${esc(e.status)}</span>` : ""}</div><pre>${esc(jsonText(e))}</pre></article>`;
+    }
+
+    function renderTimeline(model) {
+      let questionNumber=0;
+      $("#timeline").innerHTML=model.items.map(item => {
+        if (item.type === "question") return renderQuestion(item,++questionNumber);
+        if (item.type === "checkout") return renderCheckout(item);
+        if (item.type === "submission") return renderSubmission(item);
+        if (item.type === "finish") return renderFinish(item);
+        return renderOther(item);
+      }).join("");
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const query=state.query.trim().toLowerCase(); let visible=0;
+      document.querySelectorAll(".searchable").forEach(card => {
+        const type=card.dataset.type, typeMatch=state.filter === "all" || type === state.filter;
+        const queryMatch=!query || card.dataset.search.includes(query) || card.textContent.toLowerCase().includes(query);
+        card.classList.toggle("hidden", !(typeMatch && queryMatch)); if (typeMatch && queryMatch) visible++;
+      });
+      $("#empty").classList.toggle("hidden", visible !== 0);
+    }
+
+    function render() {
+      const trajectory=report.trajectories[state.index], model=eventModel(trajectory), info=summary(trajectory,model), manifest=trajectory.manifest || {};
+      renderRunList(); renderSummary(info); renderComparison(); renderChart(model); renderTimeline(model);
+      $("#runEyebrow").textContent=`${info.submission} · ${info.judge}`;
+      $("#runTitle").textContent=info.target;
+      $("#runSubtitle").textContent=`Run ${trajectory.id} · ${trajectory.source}`;
+      const badge=$("#privacyBadge"); badge.textContent=`${trajectory.privacy} event stream`; badge.className=`privacy-badge ${trajectory.privacy}`;
+      $("#footer").textContent=`${model.events.length} protocol events · ${manifest.protocol || "trajectory JSON"} · rendered locally`;
+    }
+
+    $("#search").addEventListener("input", event => { state.query=event.target.value; applyFilters(); });
+    $("#filters").addEventListener("click", event => { const button=event.target.closest("[data-filter]"); if (!button) return; state.filter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach(node => node.classList.toggle("active",node===button)); applyFilters(); });
+    $("#themeToggle").addEventListener("click", () => { const html=document.documentElement; html.dataset.theme=html.dataset.theme === "dark" ? "light" : "dark"; });
+    document.addEventListener("keydown", event => { if (event.key === "/" && !/input|textarea/i.test(document.activeElement.tagName)) { event.preventDefault(); $("#search").focus(); } });
+    if (!report.trajectories.length) { $("#timeline").innerHTML='<div class="empty">No trajectories supplied.</div>'; }
+    else render();
+  </script>
+</body>
+</html>
