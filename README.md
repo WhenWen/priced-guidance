@@ -3,10 +3,11 @@
 Code for **[Priced Guidance: Can Language Models Generate Future Research Ideas?][paper]**
 (Kaiyue Wen, Tengyu Ma, Percy Liang; Stanford University).
 
-[[Paper][paper]]
+[[Paper][paper]] [[Data][results-data]]
 
 <!-- Replace ARXIV_ID in the paper link and citation before publishing. -->
 [paper]: https://arxiv.org/abs/ARXIV_ID
+[results-data]: https://drive.google.com/drive/folders/1_Q5Y0L0OU_st2m90m8-ky4f4MvontswA
 
 **How much information does a language model need to recover a research idea?**
 Priced Guidance measures this as a compression cost in bits. A Generator proposes
@@ -23,6 +24,16 @@ experiments and [the paper assets](paper/README.md) for historical configuration
 We welcome **pull requests with new test cases, new submission pairs, or
 compression results**. You do not need to beat a reference result to contribute;
 a well-documented comparison or unsuccessful run is useful too.
+
+## Main-scaffold results
+
+The **[Google Drive data][results-data]** contains the main-scaffold results used
+by our Results Explorer: 87 test papers, 1,044 outcome rows, and 838 recorded
+trajectories across both judges. It includes unsuccessful outcomes, sanitized
+Guide-message exports, browser trajectory records, and the current paper's
+compression costs. Download `metadata.zip` and the model ZIPs, extract them into
+one folder, and run `python verify.py`. See [the data guide](results/main-scaffold/README.md)
+for the layout and checksums.
 
 ## Install and try an offline run
 
@@ -211,7 +222,14 @@ need not reproduce a historical trajectory exactly.
 
 ## Share compression results
 
-**Interested in improving idea compression? Submit a PR.** Add your pair under
+**Interested in improving idea compression? Submit a PR.** Every compression-result
+submission must include a **Google Drive folder** following the structure of our
+[main-scaffold data][results-data]. Include the catalog, per-target results,
+sanitized trajectories, run configuration, and checksum/validation files. Give
+reviewers view and download access, and put the Drive link in both the PR and
+your result README. See [the required data layout](results/main-scaffold/README.md#use-this-format-for-a-submission).
+
+Add your pair under
 `submissions/`, and a result note under `results/YOUR_EXPERIMENT/` using the
 [results template](results/TEMPLATE.md). Include exact model IDs, efforts,
 Generator memory/backend, judge settings, target IDs, seeds, budgets, code

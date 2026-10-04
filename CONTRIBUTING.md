@@ -38,6 +38,14 @@ while developing the pair, and evaluate improvements on a separate cohort.
 
 ## Compression results
 
+Every compression-result submission must include a Google Drive folder with the
+same logical structure as the [main-scaffold example](results/main-scaffold/README.md).
+Include `catalog.json`, the complete outcome table, run configuration/index,
+sanitized raw and browser trajectory exports, provenance, and checksums/validation.
+Provide view and download access and add the folder URL to the PR and result README.
+For open-source results, use “Anyone with the link — Viewer”. Large files belong
+in Drive rather than Git; all failures must remain in the shared data.
+
 Copy [results/TEMPLATE.md](results/TEMPLATE.md) to
 `results/YOUR_EXPERIMENT/README.md` and add a CSV with one row per target, seed,
 and judge stage. Report every planned trial, including unsuccessful and

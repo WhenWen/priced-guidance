@@ -1,0 +1,75 @@
+{
+  "folder_url": "https://drive.google.com/drive/folders/1_Q5Y0L0OU_st2m90m8-ky4f4MvontswA",
+  "access": "Anyone with the link \u2014 Viewer",
+  "files": [
+    {
+      "name": "README.md",
+      "id": "1_EZK6iBFJhcw7KMb5DoJVCQqKQ34UBnm",
+      "url": "https://drive.google.com/file/d/1_EZK6iBFJhcw7KMb5DoJVCQqKQ34UBnm/view?usp=drivesdk",
+      "size_bytes": 2381,
+      "sha256": "267d86f397592c9ce0dfc6f64f8fde95dd8d291ff963082d3859945ea6f3daca"
+    },
+    {
+      "name": "metadata.zip",
+      "id": "1Yk_u9nlCFmUgdrO_V7pmQW7NM-LFQZaH",
+      "url": "https://drive.google.com/file/d/1Yk_u9nlCFmUgdrO_V7pmQW7NM-LFQZaH/view?usp=drivesdk",
+      "size_bytes": 250790,
+      "sha256": "c2d4a75e64c1e9e7c71f7e0c93d07448fd55c258a492fa2fe3855e62a6670cc2"
+    },
+    {
+      "name": "trajectories-astra.zip",
+      "id": "1qcJvOI0fAl0rfJo57Tkq-YXUGouyC2hk",
+      "url": "https://drive.google.com/file/d/1qcJvOI0fAl0rfJo57Tkq-YXUGouyC2hk/view?usp=drivesdk",
+      "size_bytes": 24209534,
+      "sha256": "b8e08263e44899d986907a24cec5fec3ce649884af3a55e72f5037e844534b89"
+    },
+    {
+      "name": "trajectories-fable.zip",
+      "id": "1q9F2QG2XEQ1b7-dG6Q_nw7RR--GOIpNy",
+      "url": "https://drive.google.com/file/d/1q9F2QG2XEQ1b7-dG6Q_nw7RR--GOIpNy/view?usp=drivesdk",
+      "size_bytes": 32164479,
+      "sha256": "6ee3d65e62b4984876a6dba6a429eb2b125cd8fb436d2d16aebcb5567c4fe5af"
+    },
+    {
+      "name": "trajectories-glm.zip",
+      "id": "1Yx7xWdHUJFb8JZu9BFdoyEn4Gvhzd4al",
+      "url": "https://drive.google.com/file/d/1Yx7xWdHUJFb8JZu9BFdoyEn4Gvhzd4al/view?usp=drivesdk",
+      "size_bytes": 34140421,
+      "sha256": "e9359a1ad610946a7cebb03d53fef1108818ef7ef55523d02f0fd51b9acf6792"
+    },
+    {
+      "name": "trajectories-opus.zip",
+      "id": "1f0TvBOjX7BiHIymxrSBFz_OIpR-0KfF_",
+      "url": "https://drive.google.com/file/d/1f0TvBOjX7BiHIymxrSBFz_OIpR-0KfF_/view?usp=drivesdk",
+      "size_bytes": 32816684,
+      "sha256": "426b63b0d0a26adf7a8808b9ef577cf43e9efa6316e956af06d7e302491bd005"
+    },
+    {
+      "name": "trajectories-sol.zip",
+      "id": "1eJDWJJvxqW9WaLqP0eFweHbRbjJjB5L8",
+      "url": "https://drive.google.com/file/d/1eJDWJJvxqW9WaLqP0eFweHbRbjJjB5L8/view?usp=drivesdk",
+      "size_bytes": 26148129,
+      "sha256": "214f018f42e7a3ed854dcef45f9d6a51259f755d9aa1ad63a36be83e841b4aed"
+    },
+    {
+      "name": "SHA256SUMS",
+      "id": "1oogFrN9u_mN23uyHYbTDucSlFWpVQlpD",
+      "url": "https://drive.google.com/file/d/1oogFrN9u_mN23uyHYbTDucSlFWpVQlpD/view?usp=drivesdk",
+      "size_bytes": 595,
+      "sha256": "57dbca06b1d851200cf7cdf73e6505801a5a016a89dd21fdedc3da8299668a5b"
+    }
+  ],
+  "scope": {
+    "dataset": "test",
+    "targets": 87,
+    "outcomes": 1044,
+    "trajectories": 838,
+    "accounting": "occurrence-prior-v2 + mixture-judge-v1 + promotion-cost-v1"
+  },
+  "verification": {
+    "local_extracted_files": 1684,
+    "local_checksums": "passed",
+    "uploaded_file_sizes": "match local files",
+    "drive_permissions": "reader for anyone with the link"
+  }
+}

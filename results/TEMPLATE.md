@@ -2,6 +2,14 @@
 
 Describe the question, strategy, and main finding in a few sentences.
 
+## Google Drive data (required)
+
+- Folder URL:
+- Sharing: reviewers can view and download (recommended: Anyone with the link — Viewer).
+- Data follows [the reference layout](main-scaffold/README.md): catalog, all outcomes,
+  run index/configuration, sanitized trajectories, provenance, and checksums.
+- Validation command and outcome:
+
 ## Reproduce
 
 - Runtime commit and pair path/version/hash:
