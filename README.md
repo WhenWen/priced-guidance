@@ -1,5 +1,13 @@
 # Priced Guidance
 
+Code for **[Priced Guidance: Can Language Models Generate Future Research Ideas?][paper]**
+(Kaiyue Wen, Tengyu Ma, Percy Liang; Stanford University).
+
+[[Paper][paper]]
+
+<!-- Replace ARXIV_ID in the paper link and citation before publishing. -->
+[paper]: https://arxiv.org/abs/ARXIV_ID
+
 **How much information does a language model need to recover a research idea?**
 Priced Guidance measures this as a compression cost in bits. A Generator proposes
 questions and possible answers; a Guide, called the **Oracle** in the code, knows
@@ -230,6 +238,21 @@ No paid runs are needed to contribute code or run the test suite.
 | `paper/` | Frozen paper participants, curated results, and provenance |
 | `results/` | Community compression results and reporting template |
 | `tests/` | Offline protocol, runtime, isolation, and participant tests |
+
+## Citation
+
+<!-- The arXiv identifier below is a placeholder. -->
+```bibtex
+@article{wen2026priced,
+  title   = {Priced Guidance: Can Language Models Generate Future Research Ideas?},
+  author  = {Wen, Kaiyue and Ma, Tengyu and Liang, Percy},
+  journal = {arXiv preprint arXiv:ARXIV_ID},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/ARXIV_ID}
+}
+```
+
+## License
 
 The code is [MIT licensed](LICENSE). Paper titles, identifiers, source papers,
 and upstream software retain their respective attribution and licenses; see
