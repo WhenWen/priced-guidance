@@ -27,10 +27,10 @@ def test_runtime_and_submissions_do_not_import_legacy_core() -> None:
 
 def test_reference_pair_owns_real_participant_classes() -> None:
     manifest = load_manifest(ROOT / "submissions" / "reference_pair")
-    generator, oracle = load_participant_classes(manifest)
+    generator, guide = load_participant_classes(manifest)
 
     assert generator.__module__ == "participant.pair"
-    assert oracle.__module__ == "participant.pair"
+    assert guide.__module__ == "participant.pair"
     assert not (ROOT / "src" / "tech_tree_arena" / "reference.py").exists()
 
 

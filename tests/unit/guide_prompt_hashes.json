@@ -1,0 +1,14 @@
+{
+  "source_commit": "9e9c198ea8be33bba26623602e6d7c3967f9574a",
+  "requests": {
+    "reference_pair/directional": "2f6ac044c8063a46534135c9043652c6f0b5a833116cdb7fb410bc2af5c9e0eb",
+    "reference_pair/essence": "4a80f672d18be5e8de210027ba059936b30d3bb365f5d36f004834e4d6608867",
+    "reference_pair/strict": "e0e4f521f4b3807feacd965fc86d425689353e0df207485d62776b1528f04b4c",
+    "reference_pair_submit8/directional": "2f6ac044c8063a46534135c9043652c6f0b5a833116cdb7fb410bc2af5c9e0eb",
+    "reference_pair_submit8/essence": "4a80f672d18be5e8de210027ba059936b30d3bb365f5d36f004834e4d6608867",
+    "reference_pair_submit8/strict": "e0e4f521f4b3807feacd965fc86d425689353e0df207485d62776b1528f04b4c",
+    "reference_pair_fable51/directional": "3fd35665c50a1c82b9cda3be0acf07b22992fc7f04866271dd4947cec842bd27",
+    "reference_pair_fable51/essence": "4baf16d349026162a6d497cc8f675c46bec23ae1bad1fee8a17571af39c71adb",
+    "reference_pair_fable51/strict": "791b8e0f146e687487a5f7d9df1b01f6106de4ce52855bae3073d756f9ffb511"
+  }
+}

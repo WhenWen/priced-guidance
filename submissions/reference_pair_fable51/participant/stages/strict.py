@@ -219,9 +219,14 @@ def submission(generator):
     return generator._shared_submission()
 
 
-def oracle_on_enter(oracle, transition) -> None:
+def guide_on_enter(guide, transition) -> None:
     """Initialize new Strict-only Oracle state without a service call."""
 
 
-def oracle_step(oracle, value):
-    return oracle._shared_oracle_step(value)
+def guide_step(guide, value):
+    return guide._shared_guide_step(value)
+
+
+# Legacy Python names remain available for existing submissions.
+oracle_on_enter = guide_on_enter
+oracle_step = guide_step

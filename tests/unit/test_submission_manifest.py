@@ -24,7 +24,7 @@ def test_entrypoint_detection_handles_annotated_assignments(
         version="1",
         protocol="test",
         generator="generator:Generator",
-        oracle="oracle:Oracle",
+        guide="oracle:Oracle",
     )
 
     assert entrypoint_is_defined(manifest, "oracle:AgentOracle") is expected

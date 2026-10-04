@@ -645,7 +645,7 @@ def test_cache_write_classes_are_reported_separately() -> None:
     assert _anthropic_usage(None)["cache_write_1h_input_tokens"] == 0
 
 
-def test_fully_specified_oracle_schema_stays_enforced_upstream() -> None:
+def test_fully_specified_guide_schema_stays_enforced_upstream() -> None:
     """A closed contract must not be downgraded to a prompt request.
 
     Prompt-only means the exact shape is asked for, not guaranteed: the model

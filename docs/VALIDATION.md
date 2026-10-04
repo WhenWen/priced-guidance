@@ -46,3 +46,14 @@ It checks tracked files; review and stage intended files before a new release.
 After intentional changes, maintainers can refresh the release manifest with
 `python tools/check_release.py --write-manifest` and stage `release-manifest.json`.
 The manifest describes a reviewed release snapshot, not generated experiment output.
+
+## Guide terminology
+
+The terminology refactor keeps model prompts and schemas unchanged. Before/after
+AST comparison of all 36 participant files confirmed identical logic after
+normalizing renamed identifiers and excluding compatibility aliases. Regression
+fixtures capture complete model-request hashes from commit `9e9c198` for all three
+reference pairs in Directional, Essence, and Strict, including a follow-up turn.
+Legacy manifest keys, entrypoints, CLI flags, and Python keyword aliases are
+covered by compatibility checks. A smoke run recorded before the rename passes
+both protocol replay and actor replay with the renamed runtime.

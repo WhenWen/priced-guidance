@@ -3,5 +3,5 @@ name = "minimal-pair"
 version = "0.1.0"
 protocol = "idea-recovery-v1"
 generator = "participant.generator:Generator"
-oracle = "participant.oracle:Oracle"
+guide = "participant.guide:Guide"
 

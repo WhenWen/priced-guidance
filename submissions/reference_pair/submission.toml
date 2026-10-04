@@ -3,13 +3,14 @@ name = "reference-pair"
 version = "1.17.4"
 protocol = "idea-recovery-v1"
 generator = "participant.generator:Generator"
-oracle = "participant.oracle:Oracle"
+guide = "participant.guide:Guide"
 
 [modules]
 shared = [
   "README.md",
   "participant/__init__.py",
   "participant/generator.py",
+  "participant/guide.py",
   "participant/oracle.py",
   "participant/pair.py",
   "participant/stages/__init__.py",

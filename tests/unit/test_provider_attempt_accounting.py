@@ -1880,9 +1880,9 @@ def _expectations(**overrides: object) -> "_ActorProtocolExpectations":
         "current_generator_branch": "root",
         "generator_pending": False,
         "pending_generator_input": None,
-        "oracle_calls": (),
-        "oracle_pending": False,
-        "pending_oracle_input": None,
+        "guide_calls": (),
+        "guide_pending": False,
+        "pending_guide_input": None,
         "judge_pending": False,
     }
     base.update(overrides)
@@ -1900,7 +1900,7 @@ def _presented() -> object:
     return PresentedQuestion("q1", question)
 
 
-def test_an_interrupted_oracle_judge_call_is_a_recognised_protocol_position() -> None:
+def test_an_interrupted_guide_judge_call_is_a_recognised_protocol_position() -> None:
     """The Oracle's own Judge call is a Judge call, with nothing committed.
 
     ``judge_pending`` tracks only the formal judgment of a committed
@@ -1912,8 +1912,8 @@ def test_an_interrupted_oracle_judge_call_is_a_recognised_protocol_position() ->
     from tech_tree_arena.replay.recorder import _judge_call_is_pending
 
     mid_turn = _expectations(
-        oracle_pending=True,
-        pending_oracle_input=_presented(),
+        guide_pending=True,
+        pending_guide_input=_presented(),
     )
     assert _judge_call_is_pending(mid_turn) is True
 
@@ -1927,7 +1927,7 @@ def test_no_judge_call_is_outstanding_outside_those_two_seats() -> None:
     assert _judge_call_is_pending(_expectations(judge_pending=True)) is True
 
 
-def test_an_agent_oracle_wall_outwaits_its_own_turn_budget() -> None:
+def test_an_agent_guide_wall_outwaits_its_own_turn_budget() -> None:
     """Raising the oracle's turn budget must actually raise its wall.
 
     The actor wall used to be a flat participant default for every backend
@@ -1936,16 +1936,16 @@ def test_an_agent_oracle_wall_outwaits_its_own_turn_budget() -> None:
     it was meant to permit.
     """
 
-    from tech_tree_arena.cli import _oracle_actor_timeout
+    from tech_tree_arena.cli import _guide_actor_timeout
 
     long_turn = {"backend": "codex", "timeout_seconds": 1800.0}
-    assert _oracle_actor_timeout(long_turn) >= 1800.0
+    assert _guide_actor_timeout(long_turn) >= 1800.0
 
     short_turn = {"backend": "codex", "timeout_seconds": 120.0}
-    assert _oracle_actor_timeout(short_turn) == _oracle_actor_timeout(None)
+    assert _guide_actor_timeout(short_turn) == _guide_actor_timeout(None)
 
     human = {"backend": "human", "timeout_seconds": 86_400.0}
-    assert _oracle_actor_timeout(human) > 86_400.0
+    assert _guide_actor_timeout(human) > 86_400.0
 
 
 def test_an_unpriceable_response_is_a_hard_stop_not_a_retry(

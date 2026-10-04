@@ -135,5 +135,10 @@ QuestionOption: TypeAlias = Option | SubmitOption
 # the Generator additionally receives one on every checkout that rebuilds it
 # behind the active stage. OracleDecision stays the priced-decision subset.
 GeneratorOutput: TypeAlias = Question | Submission | StageReady
-OracleInput: TypeAlias = PresentedQuestion | SubmissionFeedback | StageTransition
-OracleDecision: TypeAlias = Choice | Checkout
+GuideInput: TypeAlias = PresentedQuestion | SubmissionFeedback | StageTransition
+GuideDecision: TypeAlias = Choice | Checkout
+
+
+# Legacy Python names remain available for existing submissions.
+OracleInput = GuideInput
+OracleDecision = GuideDecision

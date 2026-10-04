@@ -42,10 +42,10 @@ class Generator(Base):
             'setting_and_object': 'Synthetic alternative ' + str(i), 'findings': []},
             'probability': '0.125'} for i in range(8)]}
 ''')
-    (source / "participant/oracle.py").write_text('''
+    (source / "participant/guide.py").write_text('''
 from tech_tree_arena import Checkout, Choice, StageReady, StageTransition, SubmissionFeedback
 
-class Oracle:
+class Guide:
     def __init__(self, target, services):
         self.stage = services.public_resources['active_stage']
 

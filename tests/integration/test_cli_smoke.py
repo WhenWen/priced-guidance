@@ -57,8 +57,8 @@ def test_generator_resources_carry_the_time_travel_flag(tmp_path) -> None:
     store = ArtifactStore(tmp_path)
     generator_resources = store.load_json(manifest["generator_public_resources_ref"])
     assert generator_resources["time_travel_enabled"] is False
-    oracle_resources = store.load_json(manifest["oracle_public_resources_ref"])
-    assert oracle_resources["time_travel_enabled"] is False
+    guide_resources = store.load_json(manifest["oracle_public_resources_ref"])
+    assert guide_resources["time_travel_enabled"] is False
 
 
 def test_essence_defaults_to_three_repeat_judgments(tmp_path) -> None:

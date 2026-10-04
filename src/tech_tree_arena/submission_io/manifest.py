@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .._compat import legacy_fields
+
 import importlib
 import ast
 import hashlib
@@ -31,6 +33,7 @@ MAX_PATH_DEPTH = 16
 STAGE_ORDER = ("directional", "essence", "strict")
 
 
+@legacy_fields(oracle='guide')
 @dataclass(frozen=True, slots=True)
 class SubmissionManifest:
     root: Path
@@ -38,7 +41,7 @@ class SubmissionManifest:
     version: str
     protocol: str
     generator: str
-    oracle: str
+    guide: str
     modules: dict[str, tuple[str, ...]] | None = None
 
 
@@ -130,7 +133,7 @@ def _module_files(manifest: SubmissionManifest) -> dict[str, tuple[Path, ...]]:
         for path in (Path("participant/__init__.py"), Path("pyproject.toml"), Path("uv.lock"))
         if (manifest.root / path).is_file()
     }
-    for entrypoint in (manifest.generator, manifest.oracle):
+    for entrypoint in (manifest.generator, manifest.guide):
         module_name = entrypoint.partition(":")[0]
         relative = Path(*module_name.split("."))
         candidates = (relative.with_suffix(".py"), relative / "__init__.py")
@@ -458,6 +461,10 @@ def load_manifest(root: str | Path) -> SubmissionManifest:
         raise ValidationError("submission.toml is invalid") from exc
     if data.get("schema_version") != 1:
         raise ValidationError("unsupported submission schema_version")
+    if "guide" in data:
+        if "oracle" in data and data["oracle"] != data["guide"]:
+            raise ValidationError("submission manifest has conflicting guide and oracle entrypoints")
+        data["oracle"] = data.pop("guide")
     required = ("name", "version", "protocol", "generator", "oracle")
     if set(data) - {"schema_version", *required, "modules"}:
         raise ValidationError("submission manifest contains unknown fields")
@@ -522,8 +529,8 @@ def load_participant_classes(manifest: SubmissionManifest) -> tuple[type, type]:
     try:
         with _submission_import_path(manifest.root):
             generator = _load_entrypoint(manifest.root, manifest.generator)
-            oracle = _load_entrypoint(manifest.root, manifest.oracle)
-        return generator, oracle
+            guide = _load_entrypoint(manifest.root, manifest.guide)
+        return generator, guide
     finally:
         for name in list(sys.modules):
             if name == "participant" or name.startswith("participant."):
@@ -576,7 +583,7 @@ def entrypoint_is_defined(manifest: SubmissionManifest, entrypoint: str) -> bool
 
 def validate_entrypoint_sources(manifest: SubmissionManifest) -> None:
     """Validate entrypoint shape without executing participant module code."""
-    for entrypoint in (manifest.generator, manifest.oracle):
+    for entrypoint in (manifest.generator, manifest.guide):
         module_name, _, attribute = entrypoint.partition(":")
         relative = Path(*module_name.split("."))
         candidates = (manifest.root / relative.with_suffix(".py"), manifest.root / relative / "__init__.py")

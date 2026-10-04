@@ -45,14 +45,14 @@ Every question and submission contains one finite, strictly positive probability
 
 The Arena starts with `step(None)`, which must return a `Question`. After each question it returns the selected option ID and the Generator-authored `public_payload` as a `Choice`. After an ordinary option the Generator must return another `Question`. Only a selected `SubmitOption` authorizes one `Submission`, and the Generator must return that submission immediately; returning a submission at any other time, or returning a question after a submit choice, is a protocol error.
 
-Keep all beliefs, transcripts, and agent state on `self`. The Arena does not impose a strategy deadline such as 12 or 14 questions and never forces a submission. Default question, Oracle-decision, and submission-attempt limits are fail-closed resource safeguards (256 each), not instructions for when to submit.
+Keep all beliefs, transcripts, and agent state on `self`. The Arena does not impose a strategy deadline such as 12 or 14 questions and never forces a submission. Default question, Guide-decision, and submission-attempt limits are fail-closed resource safeguards (256 each), not instructions for when to submit.
 
-## Oracle
+## Guide
 
 ```python
 from tech_tree_arena import Checkout, Choice, SubmissionFeedback
 
-class Oracle:
+class Guide:
     def __init__(self, target, services):
         self.target = target
         self.services = services
@@ -67,13 +67,13 @@ class Oracle:
         return Choice("a" if len(self.seen) == 1 else "submit")
 ```
 
-For a `PresentedQuestion`, the Oracle returns an offered option ID. In a time-travel run it may instead return `Checkout(old_question_id)` for an eligible earlier question. The Arena restores the Generator to the checkpoint immediately after it authored that question; the same Oracle instance stays alive and can remember the abandoned branch.
+For a `PresentedQuestion`, the Guide returns an offered option ID. In a time-travel run it may instead return `Checkout(old_question_id)` for an eligible earlier question. The Arena restores the Generator to the checkpoint immediately after it authored that question; the same Guide instance stays alive and can remember the abandoned branch.
 
-If a submission attempt is rejected, the Judge's verdicts are delivered only to the Oracle in `SubmissionFeedback`. The Oracle must then return `Checkout(...)`, and the handle must be in `valid_checkout_question_ids`. This recovery list includes the source question itself, so even a rejected root attempt can retry. When ordinary time travel is disabled, recovery to that source question is still allowed.
+If a submission attempt is rejected, the Judge's verdicts are delivered only to the Guide in `SubmissionFeedback`. The Guide must then return `Checkout(...)`, and the handle must be in `valid_checkout_question_ids`. This recovery list includes the source question itself, so even a rejected root attempt can retry. When ordinary time travel is disabled, recovery to that source question is still allowed.
 
 Checkout is a zero-bit control action. It restores the destination question's `path_K`, unwinding every abandoned choice, including a rejected `SubmitOption`. The next `Choice` is priced normally and also pays the non-rewindable continuation/option repetition surcharge. A rejected submission has no accepted-mass pointer cost; only a passing attempt retains its submit choice, adds the accepted-mass pointer cost, and terminates the match.
 
-Neither role may attach free-form text to its decision. To communicate a value to the Generator, the Generator must first include it in a finite option payload before the Oracle chooses. Judge verdicts and failure reasons never reach the Generator directly or through an Oracle-authored payload.
+Neither role may attach free-form text to its decision. To communicate a value to the Generator, the Generator must first include it in a finite option payload before the Guide chooses. Judge verdicts and failure reasons never reach the Generator directly or through an Guide-authored payload.
 
 ## Services
 
@@ -103,7 +103,7 @@ name = "my-pair"
 version = "0.1.0"
 protocol = "idea-recovery-v1"
 generator = "participant.generator:Generator"
-oracle = "participant.oracle:Oracle"
+guide = "participant.guide:Guide"
 ```
 
 Submit a directory or zip. If `pyproject.toml` declares third-party dependencies, include the exact `uv.lock`. Local dependency builds are unverified; hidden evaluation requires an external reviewed builder and runner.
@@ -141,7 +141,7 @@ class Generator:
 ```
 
 Each stage should own both actor entry functions (`generator_step`,
-`oracle_step`), service-free `*_on_enter` hooks, its Judge criterion and route
+`guide_step`), service-free `*_on_enter` hooks, its Judge criterion and route
 menu, plus any finer route functions it expects to revise. Stage files may
 statically import shared helpers or files in their own hash group. Shared may
 not statically import a stage, and one stage may not import another; the
@@ -179,7 +179,7 @@ idea-arena resume runs/<run-id> --progress
 idea-arena resume runs/<run-id> --retry-interrupted-call --progress
 ```
 
-Run-level recovery starts a new run and leaves the interrupted or failed source run untouched. It resumes from the last committed Generator/Oracle/Judge boundary, including an in-flight submission attempt or post-rejection recovery. It preserves the active `path_K`, submission-attempt counters, private feedback, checkout capabilities, branch counters, and Judge/service tapes. Before continuing, the Arena verifies that the role/branch tape after the checkpoint is exactly the ordered write-ahead service-journal suffix, including failures and resource/RNG metadata. The default mode replays that complete sequence in its original order, including exceptions that participant code may have caught.
+Run-level recovery starts a new run and leaves the interrupted or failed source run untouched. It resumes from the last committed Generator/Guide/Judge boundary, including an in-flight submission attempt or post-rejection recovery. It preserves the active `path_K`, submission-attempt counters, private feedback, checkout capabilities, branch counters, and Judge/service tapes. Before continuing, the Arena verifies that the role/branch tape after the checkpoint is exactly the ordered write-ahead service-journal suffix, including failures and resource/RNG metadata. The default mode replays that complete sequence in its original order, including exceptions that participant code may have caught.
 
 Use `--retry-interrupted-call` only when the final uncommitted call died from an uncaught provider/service exception and you want a fresh attempt. The Arena verifies that exact condition, records the old suffix as abandoned, carries forward its cost, usage, service counters, and RNG advancement, and makes the pending call live. It will not use this policy to bypass protocol errors, resource limits, or an unrelated exception raised after a successful service response. This is separate from a rejected submission attempt, which normally recovers inside the same run. Original submission and target paths may be moved or deleted: each run references integrity-checked, content-addressed snapshots.
 

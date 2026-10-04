@@ -11,12 +11,12 @@ Code for **[Priced Guidance: Can Language Models Generate Future Research Ideas?
 
 **How much information does a language model need to recover a research idea?**
 Priced Guidance measures this as a compression cost in bits. A Generator proposes
-questions and possible answers; a Guide, called the **Oracle** in the code, knows
+questions and possible answers; a Guide, called the **Guide** in the code, knows
 the target paper and selects answers. Each answer has a price determined by the
 Generator's probability assignment. An independent judge checks whether the
 resulting idea recovers the target at the Directional or Essence level.
 
-This repository contains the Idea Arena runtime, reference Generator–Oracle
+This repository contains the Idea Arena runtime, reference Generator–Guide
 pairs, the paper's 40-paper development and 87-paper test cohorts, and tools for
 creating new cases. The installable package and command-line tool are both named `idea-arena`. See [the release scope](docs/RELEASE_SCOPE.md) for the retained
 experiments and [the paper assets](paper/README.md) for historical configurations.
@@ -64,7 +64,7 @@ are at the repository root. The offline test suite is `python -m pytest -q`.
 ## 1. Create a new test case with an Opus 5 summary
 
 A test case is a paper's structured **gold summary**, generated from its arXiv
-LaTeX source. The summary is visible to the Oracle and judge; the Generator only
+LaTeX source. The summary is visible to the Guide and judge; the Generator only
 receives public taxonomy resources and the information purchased through choices.
 
 **Choose papers.** Create a JSONL file with one object per paper. For example:
@@ -136,7 +136,7 @@ See [contributing test cases](CONTRIBUTING.md#new-test-cases) for PR contents.
 
 ## 2. Add a submission pair
 
-A **submission pair** consists of a Generator and an Oracle, a manifest, and
+A **submission pair** consists of a Generator and an Guide, a manifest, and
 any private strategy modules owned by those participants. Start with either:
 
 ```bash
@@ -150,7 +150,7 @@ idea-arena new submissions/my_reference_pair --reference
 You can also create your own pair following the structure of
 `submissions/reference_pair_submit8`, our eight-candidate Directional reference.
 Give your pair a unique `name` and version in `submission.toml`, and implement
-`participant/generator.py`, `participant/oracle.py`, and any strategy modules.
+`participant/generator.py`, `participant/guide.py`, and any strategy modules.
 The reference entrypoints delegate most strategy code to `participant/stages/`.
 
 ```toml
@@ -159,14 +159,22 @@ name = "my-pair"
 version = "0.1.0"
 protocol = "idea-recovery-v1"
 generator = "participant.generator:Generator"
-oracle = "participant.oracle:Oracle"
+guide = "participant.guide:Guide"
 ```
+
+The code calls the target-informed participant the **Guide**, matching the paper.
+Existing `oracle` manifest keys, `participant.oracle:Oracle` entrypoints, and
+`--oracle-agent*` flags remain accepted as compatibility aliases. Use
+`IDEA_ARENA_GUIDE_MODEL` to select the Guide model; the old
+`IDEA_ARENA_ORACLE_MODEL` environment variable also remains supported. Saved run fields
+and model prompts retain their original spelling so existing results still replay
+and the naming change does not alter model inputs.
 
 Keep the reference template's `[modules]` section if you use its staged scaffold.
 Use injected `services` for model calls and randomness so the run can be replayed.
-The Generator authors finite option distributions; the Oracle may choose an
+The Generator authors finite option distributions; the Guide may choose an
 option or check out an earlier question, but cannot send unpriced text back to
-the Generator. A submission is allowed only after the Oracle selects a
+the Generator. A submission is allowed only after the Guide selects a
 `SubmitOption`. [The player guide](docs/PLAYER_GUIDE.md) includes runnable class
 examples, the service interface, manifests, and stage transitions.
 
@@ -187,10 +195,10 @@ and an exact `uv.lock` in the submission folder.
 
 Set your provider credentials in the shell, or copy `.env.example` to an ignored
 `.env` and pass `--env-file .env`. This example needs Anthropic for the Generator
-and Oracle, and OpenAI for the judge:
+and Guide, and OpenAI for the judge:
 
 ```bash
-export IDEA_ARENA_ORACLE_MODEL=anthropic/claude-fable-5
+export IDEA_ARENA_GUIDE_MODEL=anthropic/claude-fable-5
 export IDEA_ARENA_JUDGE_MODEL=gpt-5.5
 idea-arena run submissions/reference_pair_submit8 \
   --target-pack test87 --target 2604.27351 --seed 1 \

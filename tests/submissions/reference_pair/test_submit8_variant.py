@@ -13,7 +13,7 @@ from tech_tree_arena.submission_io.manifest import load_manifest, load_participa
 
 ROOT = Path(__file__).resolve().parents[3]
 VARIANT = ROOT / 'submissions/reference_pair_submit8'
-Generator, Oracle = load_participant_classes(load_manifest(VARIANT))
+Generator, Guide = load_participant_classes(load_manifest(VARIANT))
 G = Generator.__init__.__globals__
 
 
@@ -145,7 +145,7 @@ def test_malformed_expansion_fails_closed_without_one_candidate_fallback(rows):
     assert len(services.calls) == 3
 
 
-def test_oracle_code_and_route_policies_are_unchanged():
+def test_guide_code_and_route_policies_are_unchanged():
     base = ROOT / 'submissions/reference_pair'
     marker = '# The Oracle below'
     assert (base/'participant/pair.py').read_text().split(marker, 1)[1] == (VARIANT/'participant/pair.py').read_text().split(marker, 1)[1]
@@ -156,7 +156,7 @@ def test_oracle_code_and_route_policies_are_unchanged():
             original = path.read_text()
             variant = (VARIANT/'participant/stages'/path.name).read_text()
             assert original.split('def submission(generator):')[0] == variant.split('def submission(generator):')[0]
-            assert original.split('def oracle_on_enter')[1] == variant.split('def oracle_on_enter')[1]
+            assert original.split('def guide_on_enter')[1] == variant.split('def guide_on_enter')[1]
             continue
         assert path.read_bytes() == (VARIANT/'participant/stages'/path.name).read_bytes()
 
@@ -180,7 +180,7 @@ def test_complete_preview_above_old_soft_cap_fits_protocol_without_truncation():
                for o in question.options)
 
 
-def test_oversized_dispatch_deduplicates_only_whiteboard_with_identical_oracle_view():
+def test_oversized_dispatch_deduplicates_only_whiteboard_with_identical_guide_view():
     from tech_tree_arena import PresentedQuestion
     from tech_tree_arena.contract.validation import canonical_json, MAX_PAYLOAD_BYTES
     generator, _ = prepared()

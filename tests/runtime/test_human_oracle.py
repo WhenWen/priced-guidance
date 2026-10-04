@@ -9,12 +9,12 @@ from pathlib import Path
 import pytest
 
 from tech_tree_arena.cli import (
-    _make_oracle_agent_backend,
-    _oracle_agent_config,
+    _make_guide_agent_backend,
+    _guide_agent_config,
     _run_submission,
 )
 from tech_tree_arena.errors import ArenaError
-from tech_tree_arena.runtime.human_oracle import HumanOracleBackend
+from tech_tree_arena.runtime.human_oracle import HumanGuideBackend
 
 
 def _answer_when_request_appears(workspace, turn, payload):
@@ -32,7 +32,7 @@ def _answer_when_request_appears(workspace, turn, payload):
 
 
 def test_turn_round_trip_writes_request_and_reads_answer(tmp_path):
-    backend = HumanOracleBackend(
+    backend = HumanGuideBackend(
         working_directory=tmp_path, timeout_seconds=30.0, poll_seconds=0.01
     )
     thread = _answer_when_request_appears(
@@ -62,7 +62,7 @@ def test_turn_round_trip_writes_request_and_reads_answer(tmp_path):
 
 
 def test_system_prompt_shown_once_even_with_inherited_session(tmp_path):
-    backend = HumanOracleBackend(
+    backend = HumanGuideBackend(
         working_directory=tmp_path, timeout_seconds=30.0, poll_seconds=0.01
     )
     thread = _answer_when_request_appears(tmp_path, 1, {"action": "choose", "option_id": "a"})
@@ -88,7 +88,7 @@ def test_system_prompt_shown_once_even_with_inherited_session(tmp_path):
 
 
 def test_restore_usage_keeps_inherited_spend(tmp_path):
-    backend = HumanOracleBackend(working_directory=tmp_path, poll_seconds=0.01)
+    backend = HumanGuideBackend(working_directory=tmp_path, poll_seconds=0.01)
     backend.restore_state(
         {"usage": {"input_tokens": 1000, "output_tokens": 50, "cost_usd": 12.5, "turns": 7}}
     )
@@ -107,7 +107,7 @@ def test_restore_usage_keeps_inherited_spend(tmp_path):
 
 
 def test_timeout_raises(tmp_path):
-    backend = HumanOracleBackend(
+    backend = HumanGuideBackend(
         working_directory=tmp_path, timeout_seconds=0.05, poll_seconds=0.01
     )
     with pytest.raises(TimeoutError):
@@ -117,7 +117,7 @@ def test_timeout_raises(tmp_path):
 
 
 def test_cli_config_builds_human_backend(tmp_path):
-    config = _oracle_agent_config(
+    config = _guide_agent_config(
         "human",
         model=None,
         executable=None,
@@ -133,12 +133,12 @@ def test_cli_config_builds_human_backend(tmp_path):
         "timeout_seconds": 86_400.0,
         "max_budget_usd_per_turn": None,
     }
-    backend = _make_oracle_agent_backend(config, tmp_path / "oracle")
-    assert isinstance(backend, HumanOracleBackend)
+    backend = _make_guide_agent_backend(config, tmp_path / "oracle")
+    assert isinstance(backend, HumanGuideBackend)
     assert backend.working_directory == (tmp_path / "oracle" / "human").resolve()
 
 
-def test_oracle_agent_fails_fast_on_a_submission_without_an_agent_oracle(tmp_path):
+def test_guide_agent_fails_fast_on_a_submission_without_an_agent_guide(tmp_path):
     """Selecting an agent backend a pair cannot use must error, not silently
     fall back to the ordinary model Oracle (minimal_pair defines no
     AgentOracle)."""
@@ -151,5 +151,5 @@ def test_oracle_agent_fails_fast_on_a_submission_without_an_agent_oracle(tmp_pat
             None,
             1,
             runs_dir=tmp_path,
-            oracle_agent="human",
+            guide_agent="human",
         )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ._compat import legacy_keywords
+
 import argparse
 import copy
 import hashlib
@@ -31,7 +33,7 @@ from .evaluation.smoke import SmokeAnswerJudge
 from .contract.validation import message_hash
 from .runtime.providers import ModelProviderBackend
 from .runtime.agent_cli import AgentCLIBackend
-from .runtime.human_oracle import HumanOracleBackend
+from .runtime.human_guide import HumanGuideBackend
 from .replay.artifacts import ArtifactStore, hash_tree
 from .replay.recorder import (
     RunRecorder,
@@ -339,7 +341,7 @@ def _implementation_hash(*names: str) -> str:
     return digest.hexdigest()
 
 
-def _oracle_agent_config(
+def _guide_agent_config(
     backend: str | None,
     *,
     model: str | None,
@@ -369,11 +371,13 @@ def _oracle_agent_config(
         }
     selected_model = (
         model
+        or os.environ.get("IDEA_ARENA_GUIDE_AGENT_MODEL")
         or os.environ.get("IDEA_ARENA_ORACLE_AGENT_MODEL")
         or ("opus" if backend == "claude-code" else "gpt-5.6-sol")
     )
     requested_executable = (
         executable
+        or os.environ.get("IDEA_ARENA_GUIDE_AGENT_EXECUTABLE")
         or os.environ.get("IDEA_ARENA_ORACLE_AGENT_EXECUTABLE")
         or ("claude" if backend == "claude-code" else "codex")
     )
@@ -462,7 +466,7 @@ def _participant_actor_timeout(*, codex: bool = False) -> float:
     return value if value > 0 else default
 
 
-def _oracle_actor_timeout(agent_config: dict[str, object] | None) -> float:
+def _guide_actor_timeout(agent_config: dict[str, object] | None) -> float:
     """The oracle subprocess must outwait its agent backend.
 
     A human oracle blocks the participant inside agent_turn for as long as
@@ -481,16 +485,16 @@ def _oracle_actor_timeout(agent_config: dict[str, object] | None) -> float:
     )
 
 
-def _make_oracle_agent_backend(
+def _make_guide_agent_backend(
     config: dict[str, object] | None,
     working_directory: Path,
     *,
     fork_inherited_sessions: bool = False,
-) -> AgentCLIBackend | HumanOracleBackend | None:
+) -> AgentCLIBackend | HumanGuideBackend | None:
     if config is None:
         return None
     if str(config.get("backend")) == "human":
-        return HumanOracleBackend(
+        return HumanGuideBackend(
             working_directory=working_directory / "human",
             timeout_seconds=float(config.get("timeout_seconds") or 86_400.0),
         )
@@ -522,6 +526,7 @@ def _make_oracle_agent_backend(
         raise ArenaError(str(exc)) from exc
 
 
+@legacy_keywords(oracle_agent='guide_agent', oracle_agent_model='guide_agent_model', oracle_agent_executable='guide_agent_executable', oracle_agent_reasoning_effort='guide_agent_reasoning_effort', oracle_agent_timeout_seconds='guide_agent_timeout_seconds', oracle_agent_max_budget_usd_per_turn='guide_agent_max_budget_usd_per_turn')
 def _run_submission(
     path: Path,
     target_pack: str | None,
@@ -539,12 +544,12 @@ def _run_submission(
     progress: bool = False,
     max_cost_usd_per_role: float = 1000.0,
     max_information_bits: float = 1024.0,
-    oracle_agent: str | None = None,
-    oracle_agent_model: str | None = None,
-    oracle_agent_executable: str | None = None,
-    oracle_agent_reasoning_effort: str = "high",
-    oracle_agent_timeout_seconds: float = 600.0,
-    oracle_agent_max_budget_usd_per_turn: float | None = None,
+    guide_agent: str | None = None,
+    guide_agent_model: str | None = None,
+    guide_agent_executable: str | None = None,
+    guide_agent_reasoning_effort: str = "high",
+    guide_agent_timeout_seconds: float = 600.0,
+    guide_agent_max_budget_usd_per_turn: float | None = None,
     html_report_on_failure: bool = False,
     sample_mode: bool = False,
     sample_max_questions: int = 256,
@@ -631,28 +636,30 @@ def _run_submission(
     agent_config = (
         None
         if sample_mode
-        else _oracle_agent_config(
-            oracle_agent,
-            model=oracle_agent_model,
-            executable=oracle_agent_executable,
-            reasoning_effort=oracle_agent_reasoning_effort,
-            timeout_seconds=oracle_agent_timeout_seconds,
-            max_budget_usd_per_turn=oracle_agent_max_budget_usd_per_turn,
+        else _guide_agent_config(
+            guide_agent,
+            model=guide_agent_model,
+            executable=guide_agent_executable,
+            reasoning_effort=guide_agent_reasoning_effort,
+            timeout_seconds=guide_agent_timeout_seconds,
+            max_budget_usd_per_turn=guide_agent_max_budget_usd_per_turn,
         )
     )
-    oracle_entrypoint = (
-        "tech_tree_arena.sampling:ProbabilitySamplingOracle"
+    guide_entrypoint = (
+        "tech_tree_arena.sampling:ProbabilitySamplingGuide"
         if sample_mode
-        else "participant.oracle:AgentOracle"
+        else ("participant.guide:AgentGuide"
+              if entrypoint_is_defined(manifest, "participant.guide:AgentGuide")
+              else "participant.oracle:AgentOracle")
         if agent_config is not None
-        else manifest.oracle
+        else manifest.guide
     )
     if agent_config is not None and not entrypoint_is_defined(
-        manifest, oracle_entrypoint
+        manifest, guide_entrypoint
     ):
         raise ArenaError(
             "--oracle-agent requires the submission to define "
-            f"{oracle_entrypoint!r} (an Oracle whose decisions go through "
+            f"{guide_entrypoint!r} (an Oracle whose decisions go through "
             "services.agent_turn); this submission does not"
         )
     backends = {role: ModelProviderBackend() for role in ("generator", "oracle", "judge")}
@@ -692,7 +699,7 @@ def _run_submission(
         # abandon rows are only needed when it does not).
         "time_travel_enabled": allow_time_travel,
     }
-    oracle_resources = {
+    guide_resources = {
         **public_resources,
         "judge_mode": judge_mode,
         "fmn_m": fmn_m,
@@ -709,7 +716,8 @@ def _run_submission(
             if sample_mode
             else f"{agent_config['backend']}/{agent_config['model']}"
             if agent_config
-            else os.environ.get("IDEA_ARENA_ORACLE_MODEL", "gpt-5.5")
+            else (os.environ.get("IDEA_ARENA_GUIDE_MODEL")
+                  or os.environ.get("IDEA_ARENA_ORACLE_MODEL", "gpt-5.5"))
         ),
         "judge": (
             "sample-accept-all"
@@ -739,7 +747,7 @@ def _run_submission(
         ),
         "models": model_mapping,
         "oracle_agent": agent_config,
-        "oracle_entrypoint": oracle_entrypoint,
+        "oracle_entrypoint": guide_entrypoint,
         **({"generator_codex": generator_codex} if generator_codex else {}),
         **({"generator_claude": generator_claude} if generator_claude else {}),
         **({"generator_memory": generator_memory} if generator_memory else {}),
@@ -778,7 +786,7 @@ def _run_submission(
     dependency_snapshots = [artifacts.snapshot_tree(path) for path in dependency_paths]
     public_resources_ref = artifacts.put_json(public_resources)
     generator_resources_ref = artifacts.put_json(generator_resources)
-    oracle_resources_ref = artifacts.put_json(oracle_resources)
+    guide_resources_ref = artifacts.put_json(guide_resources)
     run_manifest: dict[str, Any] = {
         "run_kind": "sample_ideas" if sample_mode else "evaluation",
         "protocol": manifest.protocol,
@@ -794,7 +802,7 @@ def _run_submission(
         "arena_version": __version__,
         "submission_name": manifest.name,
         "submission_version": manifest.version,
-        "oracle_entrypoint": oracle_entrypoint,
+        "oracle_entrypoint": guide_entrypoint,
         "oracle_agent": agent_config,
         "submission_path": str(manifest.root),
         **({"generator_codex": generator_codex} if generator_codex else {}),
@@ -839,7 +847,7 @@ def _run_submission(
         "scorer": "idea-recovery-v1-score-v2-repeat-judge",
         "models": model_mapping,
         "generator_public_resources_ref": generator_resources_ref,
-        "oracle_public_resources_ref": oracle_resources_ref,
+        "oracle_public_resources_ref": guide_resources_ref,
         "seed": seed,
         "runner": "local-unverified",
         "budgets": {
@@ -906,10 +914,10 @@ def _run_submission(
         return sink
 
     service_limits = ServiceLimits(max_model_cost_usd=max_cost_usd_per_role)
-    oracle_agent_backend = (
+    guide_agent_backend = (
         None
         if sample_mode
-        else _make_oracle_agent_backend(
+        else _make_guide_agent_backend(
             agent_config,
             recorder.root / "agent-workspace" / "oracle",
         )
@@ -933,14 +941,14 @@ def _run_submission(
             fmn_n=fmn_n,
             coarse_reasons=bool(judge_config.get("coarse_reasons")),
         )
-    oracle_judge = _OracleJudgeHandle()
-    oracle_judge.bind(judge, target, repeats=resolved_judge_repeats)
+    guide_judge = _GuideJudgeHandle()
+    guide_judge.bind(judge, target, repeats=resolved_judge_repeats)
     run_budgets = run_manifest["budgets"]
     runner = ArenaRunner(
         allow_time_travel=allow_time_travel,
         limits=RunLimits(
             max_questions=int(run_budgets["questions"]),
-            max_oracle_decisions=int(run_budgets["oracle_decisions"]),
+            max_guide_decisions=int(run_budgets["oracle_decisions"]),
             max_checkouts=int(run_budgets["checkouts"]),
             max_checkout_targets=int(run_budgets["checkout_targets"]),
             max_checkout_rewind=int(run_budgets["checkout_rewind"]),
@@ -994,23 +1002,23 @@ def _run_submission(
                 sandbox_generator=bool(generator_memory or generator_codex or generator_claude),
                 timeout_seconds=_participant_actor_timeout(codex=bool(generator_memory or generator_codex or generator_claude)),
             ),
-            oracle_factory=SubprocessActorFactory(
+            guide_factory=SubprocessActorFactory(
                 manifest.root,
-                oracle_entrypoint,
+                guide_entrypoint,
                 constructor_args=() if sample_mode else (target,),
                 service_factory=ServiceFactory(
                     seed=seed * 2 + 2,
                     model_backend=backends["oracle"],
-                    agent_backend=oracle_agent_backend,
+                    agent_backend=guide_agent_backend,
                     model_name=os.environ.get("IDEA_ARENA_ORACLE_MODEL", "gpt-5.5"),
-                    public_resources=oracle_resources,
+                    public_resources=guide_resources,
                     event_sink=service_sink("oracle"),
-                    judge_call=oracle_judge,
+                    judge_call=guide_judge,
                     limits=service_limits,
                 ),
                 dependency_paths=dependency_paths,
                 log_path=recorder.root / "logs" / "oracle.log",
-                timeout_seconds=_oracle_actor_timeout(agent_config),
+                timeout_seconds=_guide_actor_timeout(agent_config),
             ),
             target=target,
             judge=judge,
@@ -1085,7 +1093,7 @@ def _run_submission(
         "accounting_version": result.branch_store.accounting_version,
         "matched_idea_ids": list(result.matched_idea_ids),
         "questions": result.question_count,
-        "oracle_decisions": result.oracle_decision_count,
+        "oracle_decisions": result.guide_decision_count,
         "checkouts": result.checkout_count,
         "submission_attempts": result.submission_attempt_count,
         "judge_repeats": result.judge_repeats,
@@ -1140,7 +1148,7 @@ def _terminate_as_interrupt(signum: int, frame: Any) -> None:
 
 
 
-class _OracleJudgeHandle:
+class _GuideJudgeHandle:
     """Late-bound Arena Judge access for the Oracle.
 
     The Judge is Arena-owned and holds the target, so the Oracle reaches it
@@ -1211,12 +1219,12 @@ def _install_terminate_handler() -> None:
 
 def _close_runner_handles(runner: ArenaRunner, codex_backend: Any | None = None) -> None:
     seen: set[int] = set()
-    for history in (runner.generator_history, runner.oracle_history):
+    for history in (runner.generator_history, runner.guide_history):
         for _, handle in history:
             if id(handle) not in seen:
                 seen.add(id(handle))
                 runner.runtime.close(handle)
-    for handle in (runner.last_generator, runner.last_oracle):
+    for handle in (runner.last_generator, runner.last_guide):
         if handle is not None and id(handle) not in seen:
             seen.add(id(handle))
             runner.runtime.close(handle)
@@ -1225,6 +1233,7 @@ def _close_runner_handles(runner: ArenaRunner, codex_backend: Any | None = None)
         close()
 
 
+@legacy_keywords(oracle_agent_override='guide_agent_override')
 def _resume_submission(
     run_directory: Path,
     *,
@@ -1239,7 +1248,7 @@ def _resume_submission(
     discard_service_tail: bool = False,
     compatible_submission: str | Path | None = None,
     promote_judge: str | None = None,
-    oracle_agent_override: dict[str, object] | None = None,
+    guide_agent_override: dict[str, object] | None = None,
     html_report_on_failure: bool = False,
     model_backend: Any | None = None,
     sample_event_sink: Callable[[dict[str, Any]], None] | None = None,
@@ -1424,7 +1433,7 @@ def _resume_submission(
         if source_manifest.get("generator_public_resources_ref")
         else source_manifest.get("generator_public_resources") or {}
     )
-    oracle_resources = (
+    guide_resources = (
         artifacts.load_json(source_manifest["oracle_public_resources_ref"])
         if source_manifest.get("oracle_public_resources_ref")
         else source_manifest.get("oracle_public_resources") or {}
@@ -1482,19 +1491,19 @@ def _resume_submission(
         )
     raw_agent_config = source_manifest.get("oracle_agent")
     agent_config = raw_agent_config if isinstance(raw_agent_config, dict) else None
-    if oracle_agent_override is not None:
+    if guide_agent_override is not None:
         if agent_config is None:
             raise ArenaError(
                 "--oracle-agent override requires a source run that already "
                 "used an agent oracle"
             )
-        agent_config = oracle_agent_override
-    oracle_entrypoint = str(source_manifest.get("oracle_entrypoint") or manifest.oracle)
+        agent_config = guide_agent_override
+    guide_entrypoint = str(source_manifest.get("oracle_entrypoint") or manifest.guide)
     models = source_manifest.get("models") or {}
-    if oracle_agent_override is not None:
+    if guide_agent_override is not None:
         models = {
             **models,
-            "oracle": f"{oracle_agent_override['backend']}/{oracle_agent_override['model']}",
+            "oracle": f"{guide_agent_override['backend']}/{guide_agent_override['model']}",
         }
     seed = int(source_manifest["seed"])
     prefix = resume_event_prefix(source_root, checkpoint_name=checkpoint_name)
@@ -1534,10 +1543,10 @@ def _resume_submission(
             "phase"
         ),
     })
-    if oracle_agent_override is not None:
+    if guide_agent_override is not None:
         # The fork's manifest must say who actually played oracle from here on.
         inherited_manifest.update({
-            "oracle_agent": oracle_agent_override,
+            "oracle_agent": guide_agent_override,
             "models": models,
             "oracle_agent_overridden_from": (
                 raw_agent_config.get("backend")
@@ -1804,10 +1813,10 @@ def _resume_submission(
         generator_backend = _ProgressModelBackend(
             generator_backend, sample_event_sink
         )
-    oracle_agent_backend = (
+    guide_agent_backend = (
         None
         if sample_mode
-        else _make_oracle_agent_backend(
+        else _make_guide_agent_backend(
             agent_config,
             recorder.root / "agent-workspace" / "oracle",
             # A resumed or promoted run inherits the source run's oracle
@@ -1835,29 +1844,29 @@ def _resume_submission(
         sandbox_generator=bool(generator_memory or generator_codex or generator_claude),
         timeout_seconds=_participant_actor_timeout(codex=bool(generator_memory or generator_codex or generator_claude)),
     )
-    oracle_judge = _OracleJudgeHandle()
-    oracle_factory = SubprocessActorFactory(
+    guide_judge = _GuideJudgeHandle()
+    guide_factory = SubprocessActorFactory(
         manifest.root,
-        oracle_entrypoint,
+        guide_entrypoint,
         constructor_args=() if sample_mode else (target,),
         service_factory=ServiceFactory(
             seed=seed * 2 + 2,
             model_backend=backends["oracle"],
-            agent_backend=oracle_agent_backend,
+            agent_backend=guide_agent_backend,
             model_name=models.get("oracle"),
-            public_resources=oracle_resources,
+            public_resources=guide_resources,
             event_sink=service_sink("oracle"),
-            judge_call=oracle_judge,
+            judge_call=guide_judge,
             limits=service_limits,
         ),
         dependency_paths=dependency_paths,
         log_path=recorder.root / "logs" / "oracle.log",
-        timeout_seconds=_oracle_actor_timeout(agent_config),
+        timeout_seconds=_guide_actor_timeout(agent_config),
     )
     resume_state, checkpoint, _ = load_resume_state(
         source_root,
         generator_factory=generator_factory,
-        oracle_factory=oracle_factory,
+        guide_factory=guide_factory,
         runtime=runtime,
         seed=seed,
         retry_interrupted_call=retry_interrupted_call,
@@ -1926,14 +1935,14 @@ def _resume_submission(
     active_judge_repeats = int(active_judge_config.get("repeats") or 1)
     if not 1 <= active_judge_repeats <= 64:
         raise ArenaError("recorded Judge repeat count must be from 1 to 64")
-    oracle_judge.bind(judge, target, repeats=active_judge_repeats)
+    guide_judge.bind(judge, target, repeats=active_judge_repeats)
     budgets = inherited_manifest.get("budgets") or {}
     runner = ArenaRunner(
         allow_time_travel=allow_time_travel,
         limits=(
             RunLimits(
                 max_questions=int(budgets.get("questions", 256)),
-                max_oracle_decisions=int(budgets.get("oracle_decisions", 256)),
+                max_guide_decisions=int(budgets.get("oracle_decisions", 256)),
                 max_checkouts=int(budgets.get("checkouts", 64)),
                 max_checkout_targets=int(budgets.get("checkout_targets", 128)),
                 max_checkout_rewind=int(budgets.get("checkout_rewind", 256)),
@@ -1944,7 +1953,7 @@ def _resume_submission(
             if sample_mode
             else RunLimits(
                 max_questions=int(budgets.get("questions", 256)),
-                max_oracle_decisions=int(budgets.get("oracle_decisions", 256)),
+                max_guide_decisions=int(budgets.get("oracle_decisions", 256)),
                 max_checkouts=int(budgets.get("checkouts", 64)),
                 max_checkout_targets=int(budgets.get("checkout_targets", 128)),
                 max_checkout_rewind=int(budgets.get("checkout_rewind", 256)),
@@ -1980,7 +1989,7 @@ def _resume_submission(
     try:
         result = runner.run(
             generator_factory=generator_factory,
-            oracle_factory=oracle_factory,
+            guide_factory=guide_factory,
             target=target,
             judge=judge,
             seed=seed,
@@ -2060,7 +2069,7 @@ def _resume_submission(
         "accounting_version": result.branch_store.accounting_version,
         "matched_idea_ids": list(result.matched_idea_ids),
         "questions": result.question_count,
-        "oracle_decisions": result.oracle_decision_count,
+        "oracle_decisions": result.guide_decision_count,
         "checkouts": result.checkout_count,
         "submission_attempts": result.submission_attempt_count,
         "judge_repeats": result.judge_repeats,
@@ -2194,12 +2203,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
         progress=args.progress,
         max_cost_usd_per_role=args.max_cost_usd_per_role,
         max_information_bits=args.max_information_bits,
-        oracle_agent=args.oracle_agent,
-        oracle_agent_model=args.oracle_agent_model,
-        oracle_agent_executable=args.oracle_agent_executable,
-        oracle_agent_reasoning_effort=args.oracle_agent_reasoning_effort,
-        oracle_agent_timeout_seconds=args.oracle_agent_timeout_seconds,
-        oracle_agent_max_budget_usd_per_turn=args.oracle_agent_max_budget_usd_per_turn,
+        guide_agent=args.guide_agent,
+        guide_agent_model=args.guide_agent_model,
+        guide_agent_executable=args.guide_agent_executable,
+        guide_agent_reasoning_effort=args.guide_agent_reasoning_effort,
+        guide_agent_timeout_seconds=args.guide_agent_timeout_seconds,
+        guide_agent_max_budget_usd_per_turn=args.guide_agent_max_budget_usd_per_turn,
         html_report_on_failure=not args.no_html_report,
         generator_codex=_generator_codex_config(args),
         generator_claude=_generator_claude_config(args),
@@ -2285,13 +2294,13 @@ def _cmd_resume(args: argparse.Namespace) -> int:
         if args.progress and resume_manifest.get("run_kind") == "sample_ideas"
         else None
     )
-    oracle_agent_override = _oracle_agent_config(
-        args.oracle_agent,
-        model=args.oracle_agent_model,
-        executable=args.oracle_agent_executable,
-        reasoning_effort=args.oracle_agent_reasoning_effort,
-        timeout_seconds=args.oracle_agent_timeout_seconds,
-        max_budget_usd_per_turn=args.oracle_agent_max_budget_usd_per_turn,
+    guide_agent_override = _guide_agent_config(
+        args.guide_agent,
+        model=args.guide_agent_model,
+        executable=args.guide_agent_executable,
+        reasoning_effort=args.guide_agent_reasoning_effort,
+        timeout_seconds=args.guide_agent_timeout_seconds,
+        max_budget_usd_per_turn=args.guide_agent_max_budget_usd_per_turn,
     )
     result = _resume_submission(
         Path(args.run_dir),
@@ -2306,7 +2315,7 @@ def _cmd_resume(args: argparse.Namespace) -> int:
         discard_service_tail=args.discard_service_tail,
         compatible_submission=args.compatible_submission,
         promote_judge=args.promote_judge,
-        oracle_agent_override=oracle_agent_override,
+        guide_agent_override=guide_agent_override,
         html_report_on_failure=not args.no_html_report,
         sample_event_sink=sample_progress,
     )
@@ -2422,13 +2431,13 @@ def _cmd_tournament(args: argparse.Namespace) -> int:
                     progress=args.progress,
                     max_cost_usd_per_role=args.max_cost_usd_per_role,
                     max_information_bits=args.max_information_bits,
-                    oracle_agent=args.oracle_agent,
-                    oracle_agent_model=args.oracle_agent_model,
-                    oracle_agent_executable=args.oracle_agent_executable,
-                    oracle_agent_reasoning_effort=args.oracle_agent_reasoning_effort,
-                    oracle_agent_timeout_seconds=args.oracle_agent_timeout_seconds,
-                    oracle_agent_max_budget_usd_per_turn=(
-                        args.oracle_agent_max_budget_usd_per_turn
+                    guide_agent=args.guide_agent,
+                    guide_agent_model=args.guide_agent_model,
+                    guide_agent_executable=args.guide_agent_executable,
+                    guide_agent_reasoning_effort=args.guide_agent_reasoning_effort,
+                    guide_agent_timeout_seconds=args.guide_agent_timeout_seconds,
+                    guide_agent_max_budget_usd_per_turn=(
+                        args.guide_agent_max_budget_usd_per_turn
                     ),
                 )
             )
@@ -2517,7 +2526,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="do not generate the default public and private trajectory reports",
     )
-    _add_oracle_agent_arguments(run)
+    _add_guide_agent_arguments(run)
     _add_generator_codex_arguments(run)
     run.add_argument('--generator-memory-target-chars', type=int,
                      help='summary prompt target, distinct from the hard character ceiling')
@@ -2604,7 +2613,7 @@ def build_parser() -> argparse.ArgumentParser:
             "and continue under the next stronger Judge"
         ),
     )
-    _add_oracle_agent_arguments(resume)
+    _add_guide_agent_arguments(resume)
     resume.set_defaults(handler=_cmd_resume)
     status = subcommands.add_parser("status", help="show durable run progress and resumability")
     status.add_argument("run_dir")
@@ -2629,7 +2638,7 @@ def build_parser() -> argparse.ArgumentParser:
     tournament.add_argument("--progress", action="store_true")
     tournament.add_argument("--max-cost-usd-per-role", type=float, default=1000.0)
     tournament.add_argument("--max-information-bits", type=float, default=1024.0)
-    _add_oracle_agent_arguments(tournament)
+    _add_guide_agent_arguments(tournament)
     tournament.set_defaults(handler=_cmd_tournament)
     leaderboard = subcommands.add_parser("leaderboard", help="show local tournament results")
     leaderboard.set_defaults(handler=_cmd_leaderboard)
@@ -2713,27 +2722,27 @@ def _generator_claude_config(args: argparse.Namespace) -> dict | None:
         raise ArenaError("Claude Generator setup failed; run tools/install_claude.py and tools/claude_account.py: " + str(exc)) from exc
 
 
-def _add_oracle_agent_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_guide_agent_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--oracle-agent",
+        "--guide-agent", "--oracle-agent",
         choices=("claude-code", "codex", "human"),
         help=(
-            "run the match with participant.oracle:AgentOracle, which routes "
-            "every Oracle decision through the selected backend via "
+            "run the match with participant.guide:AgentGuide (or legacy AgentOracle), routing "
+            "every Guide decision through the selected backend via "
             "services.agent_turn; 'human' blocks each turn on a person "
             "answering via run_dir/agent-workspace/oracle/human/ files "
-            "(on resume, overrides the source run's oracle backend)"
+            "(on resume, overrides the source run's guide backend)"
         ),
     )
-    parser.add_argument("--oracle-agent-model")
-    parser.add_argument("--oracle-agent-executable")
+    parser.add_argument("--guide-agent-model", "--oracle-agent-model")
+    parser.add_argument("--guide-agent-executable", "--oracle-agent-executable")
     parser.add_argument(
-        "--oracle-agent-reasoning-effort",
+        "--guide-agent-reasoning-effort", "--oracle-agent-reasoning-effort",
         choices=("low", "medium", "high", "xhigh", "max"),
         default="high",
     )
-    parser.add_argument("--oracle-agent-timeout-seconds", type=float, default=600.0)
-    parser.add_argument("--oracle-agent-max-budget-usd-per-turn", type=float)
+    parser.add_argument("--guide-agent-timeout-seconds", "--oracle-agent-timeout-seconds", type=float, default=600.0)
+    parser.add_argument("--guide-agent-max-budget-usd-per-turn", "--oracle-agent-max-budget-usd-per-turn", type=float)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2749,3 +2758,14 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# Legacy Python names remain available for existing submissions.
+_oracle_agent_config = _guide_agent_config
+_oracle_actor_timeout = _guide_actor_timeout
+_make_oracle_agent_backend = _make_guide_agent_backend
+_OracleJudgeHandle = _GuideJudgeHandle
+_add_oracle_agent_arguments = _add_guide_agent_arguments
+
+# Legacy imported names.
+HumanOracleBackend = HumanGuideBackend

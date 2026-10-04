@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .._compat import legacy_fields, legacy_keywords
+
 import copy
 import ast
 import hashlib
@@ -1077,7 +1079,7 @@ class RunRecorder:
         self.provider_attempt_journal = HashChainWriter(
             self.root / "provider-attempts.private.jsonl"
         )
-        self.oracle_reasoning = HashChainWriter(
+        self.guide_reasoning = HashChainWriter(
             self.root / "oracle-reasoning.private.jsonl"
         )
         self.manifest = {"schema_version": 1, "run_id": run_id, "disclosure": disclosure, **manifest}
@@ -1140,7 +1142,7 @@ class RunRecorder:
             "role": role,
             "service": service,
         })
-        self._record_oracle_reasoning(role, service, journal_kind="service_call")
+        self._record_guide_reasoning(role, service, journal_kind="service_call")
 
     def record_provider_attempt(self, role: str, attempt: dict[str, Any]) -> None:
         """Durably record provider request start/finish before service completion."""
@@ -1162,7 +1164,7 @@ class RunRecorder:
             raise ReplayDivergence("resume source has a malformed provider-attempt row")
         self.provider_attempt_journal.append(copy.deepcopy(payload))
 
-    def _record_oracle_reasoning(
+    def _record_guide_reasoning(
         self,
         role: str,
         service: dict[str, Any],
@@ -1174,7 +1176,7 @@ class RunRecorder:
         request = service.get("request") if isinstance(service.get("request"), dict) else {}
         response = service.get("response") if isinstance(service.get("response"), dict) else {}
         metadata = service.get("metadata") if isinstance(service.get("metadata"), dict) else {}
-        self.oracle_reasoning.append({
+        self.guide_reasoning.append({
             "kind": "oracle_agent_turn",
             "journal_kind": journal_kind,
             "request_hash": service.get("request_hash"),
@@ -1224,7 +1226,7 @@ class RunRecorder:
                 "source_sequence": source_sequence,
             })
         self.service_journal.append(copied)
-        self._record_oracle_reasoning(role, service, journal_kind=str(copied["kind"]))
+        self._record_guide_reasoning(role, service, journal_kind=str(copied["kind"]))
 
     def _write_status(self, status: str, **fields: Any) -> None:
         existing: dict[str, Any] = {}
@@ -1254,16 +1256,16 @@ class RunRecorder:
         The checkpoint is private because it contains participant transcripts,
         service responses, the BranchStore capability secret, and RNG state.
         """
-        if runner.last_generator is None or runner.last_oracle is None or runner.last_branches is None:
+        if runner.last_generator is None or runner.last_guide is None or runner.last_branches is None:
             return
         generator = runner.runtime.checkpoint(runner.last_generator)
-        oracle = runner.runtime.checkpoint(runner.last_oracle)
+        guide = runner.runtime.checkpoint(runner.last_guide)
         role_checkpoints = {
             "generator": [
                 runner.runtime.checkpoint(handle) for _, handle in runner.generator_history
             ],
             "oracle": [
-                runner.runtime.checkpoint(handle) for _, handle in runner.oracle_history
+                runner.runtime.checkpoint(handle) for _, handle in runner.guide_history
             ],
         }
         actor_streams = {
@@ -1299,7 +1301,7 @@ class RunRecorder:
             "engine": encoded_state,
             "actors": {
                 "generator": _actor_checkpoint_reference(generator),
-                "oracle": _actor_checkpoint_reference(oracle),
+                "oracle": _actor_checkpoint_reference(guide),
             },
             "actor_streams": actor_streams,
             "actor_history": {
@@ -1408,7 +1410,7 @@ class RunRecorder:
             "K": result.k,
             "matched_idea_ids": list(result.matched_idea_ids),
             "questions": result.question_count,
-            "oracle_decisions": result.oracle_decision_count,
+            "oracle_decisions": result.guide_decision_count,
             "checkouts": result.checkout_count,
             "submission_attempts": result.submission_attempt_count,
             "judge_repeats": result.judge_repeats,
@@ -1418,15 +1420,15 @@ class RunRecorder:
         }
         _atomic_json(self.root / "score.json", score)
         self._write_actor("generator", runner.last_generator)
-        self._write_actor("oracle", runner.last_oracle)
+        self._write_actor("oracle", runner.last_guide)
         self._write_actor_history("generator", runner.generator_history)
-        self._write_actor_history("oracle", runner.oracle_history)
+        self._write_actor_history("oracle", runner.guide_history)
         services = getattr(judge, "services", None)
         if services is not None:
             self._write_service_tape("judge", services.export_tape())
         usage = {
             "generator": runner.last_generator.services.usage(),
-            "oracle": runner.last_oracle.services.usage(),
+            "oracle": runner.last_guide.services.usage(),
             "judge_service_events": len(services.export_tape()) if services is not None else 0,
         }
         if services is not None:
@@ -1443,8 +1445,8 @@ class RunRecorder:
                     "service_state": runner.last_generator.services.export_state(),
                 },
                 "oracle": {
-                    "branch_id": runner.last_oracle.branch_id,
-                    "service_state": runner.last_oracle.services.export_state(),
+                    "branch_id": runner.last_guide.branch_id,
+                    "service_state": runner.last_guide.services.export_state(),
                 },
             },
             "judge_service_state": (
@@ -1684,6 +1686,7 @@ def _decode_submission(value: dict[str, Any]) -> Submission:
     )
 
 
+@legacy_fields(oracle_calls='guide_calls', oracle_pending='guide_pending', pending_oracle_input='pending_guide_input')
 @dataclass(slots=True)
 class _ActorProtocolExpectations:
     generator_branches: dict[str, tuple[ActorCall, ...]]
@@ -1692,9 +1695,9 @@ class _ActorProtocolExpectations:
     current_generator_branch: str
     generator_pending: bool
     pending_generator_input: Any
-    oracle_calls: tuple[ActorCall, ...]
-    oracle_pending: bool
-    pending_oracle_input: Any
+    guide_calls: tuple[ActorCall, ...]
+    guide_pending: bool
+    pending_guide_input: Any
     judge_pending: bool
 
 
@@ -1729,9 +1732,9 @@ def _derive_actor_expectations(
     node_refs: dict[str, tuple[str, int]] = {}
     generator_pending = True
     pending_generator_input: Any = None
-    oracle_calls: list[ActorCall] = []
-    oracle_pending = False
-    pending_oracle_input: Any = None
+    guide_calls: list[ActorCall] = []
+    guide_pending = False
+    pending_guide_input: Any = None
     active_submission: Submission | None = None
     judge_pending = False
     checkout_index = 0
@@ -1763,7 +1766,7 @@ def _derive_actor_expectations(
             elif role == "oracle":
                 if branch_id != "root":
                     raise ReplayDivergence("stage transition targets a non-root Oracle")
-                oracle_calls.append(call)
+                guide_calls.append(call)
             else:
                 raise ReplayDivergence("stage transition has an unknown actor role")
             continue
@@ -1783,19 +1786,19 @@ def _derive_actor_expectations(
                 current_branch,
                 len(generator[current_branch]),
             )
-            pending_oracle_input = PresentedQuestion(question_id, question)
-            oracle_pending = True
+            pending_guide_input = PresentedQuestion(question_id, question)
+            guide_pending = True
             continue
 
         if kind == "oracle_decision":
-            if not oracle_pending:
+            if not guide_pending:
                 raise ReplayDivergence("oracle decision has no trusted actor input")
             decision = _decode_protocol_decision(record.get("decision"))
-            oracle_calls.append(
-                ActorCall(pending_oracle_input, message_hash(decision))
+            guide_calls.append(
+                ActorCall(pending_guide_input, message_hash(decision))
             )
-            oracle_pending = False
-            pending_oracle_input = None
+            guide_pending = False
+            pending_guide_input = None
             continue
 
         if kind == "choice_cost":
@@ -1862,8 +1865,8 @@ def _derive_actor_expectations(
                     valid_ids,
                 )
                 IDEA_RECOVERY_V1.validate_submission_feedback(feedback)
-                pending_oracle_input = feedback
-                oracle_pending = True
+                pending_guide_input = feedback
+                guide_pending = True
             continue
 
         if kind == "checkout":
@@ -1880,8 +1883,8 @@ def _derive_actor_expectations(
             current_branch = branch_id
             generator_pending = False
             pending_generator_input = None
-            pending_oracle_input = PresentedQuestion(target_id, target_question)
-            oracle_pending = True
+            pending_guide_input = PresentedQuestion(target_id, target_question)
+            guide_pending = True
             if record.get("context") == "submission_recovery":
                 active_submission = None
             continue
@@ -1893,9 +1896,9 @@ def _derive_actor_expectations(
         current_generator_branch=current_branch,
         generator_pending=generator_pending,
         pending_generator_input=pending_generator_input,
-        oracle_calls=tuple(oracle_calls),
-        oracle_pending=oracle_pending,
-        pending_oracle_input=pending_oracle_input,
+        guide_calls=tuple(guide_calls),
+        guide_pending=guide_pending,
+        pending_guide_input=pending_guide_input,
         judge_pending=judge_pending,
     )
 
@@ -1914,7 +1917,7 @@ def _judge_call_is_pending(
 
     if expectations.judge_pending:
         return True
-    return bool(expectations.oracle_pending)
+    return bool(expectations.guide_pending)
 
 
 def _assert_actor_calls_bound(
@@ -4057,7 +4060,7 @@ def _validate_resume_checkpoint(
         raise ReplayDivergence("checkpoint Oracle branch must be root")
     _assert_actor_calls_bound(
         _checkpoint_calls(current_actor_data["oracle"], "checkpoint current oracle"),
-        actor_expectations.oracle_calls,
+        actor_expectations.guide_calls,
         role="Oracle",
     )
 
@@ -4094,20 +4097,20 @@ def _validate_resume_checkpoint(
             expected_generator[branch_id],
             role=f"Generator {branch_id}",
         )
-    oracle_history = history.get("oracle") or [checkpoint["actors"]["oracle"]]
-    if len(oracle_history) != 1 or oracle_history[0].get("branch_id") != "root":
+    guide_history = history.get("oracle") or [checkpoint["actors"]["oracle"]]
+    if len(guide_history) != 1 or guide_history[0].get("branch_id") != "root":
         raise ReplayDivergence("checkpoint Oracle history disagrees with events")
-    oracle_history_data = _expand_actor_checkpoint_data(
-        oracle_history[0], actor_streams.get("oracle") or {}
+    guide_history_data = _expand_actor_checkpoint_data(
+        guide_history[0], actor_streams.get("oracle") or {}
     )
     _validate_actor_service_cursors(
-        oracle_history_data,
+        guide_history_data,
         source="checkpoint oracle root",
         require_cursors=require_service_cursors,
     )
     _validate_service_state(
-        oracle_history_data.get("service_state") or {},
-        oracle_history_data.get("service_tape") or [],
+        guide_history_data.get("service_state") or {},
+        guide_history_data.get("service_tape") or [],
         source="checkpoint oracle root",
         root_seed=int(manifest.get("seed", 0)) * 2 + 2,
         branch_id="root",
@@ -4120,8 +4123,8 @@ def _validate_resume_checkpoint(
         require_metadata=require_service_cursors,
     )
     _assert_actor_calls_bound(
-        _checkpoint_calls(oracle_history_data, "checkpoint oracle root"),
-        actor_expectations.oracle_calls,
+        _checkpoint_calls(guide_history_data, "checkpoint oracle root"),
+        actor_expectations.guide_calls,
         role="Oracle root",
     )
 
@@ -4254,11 +4257,11 @@ def _validate_resume_checkpoint(
             )
         if phase == "after_oracle":
             source_id = protocol["current_question_id"]
-            expected_oracle_input = PresentedQuestion(
+            expected_guide_input = PresentedQuestion(
                 source_id,
                 branch_state["nodes"][source_id]["question"],
             )
-            if actor_input("oracle") != expected_oracle_input:
+            if actor_input("oracle") != expected_guide_input:
                 raise ReplayDivergence(
                     "checkpoint Oracle input is not bound to its presented question"
                 )
@@ -4662,11 +4665,12 @@ def read_resume_checkpoint(root: Path, name: str = "checkpoint.private.json") ->
     return normalized
 
 
+@legacy_keywords(oracle_factory="guide_factory")
 def load_resume_state(
     run_directory: str | Path,
     *,
     generator_factory: Any,
-    oracle_factory: Any,
+    guide_factory: Any,
     runtime: ActorRuntime,
     seed: int,
     retry_interrupted_call: bool = False,
@@ -4856,7 +4860,7 @@ def load_resume_state(
         checkpoint["resume_judge_meter"] = copy.deepcopy(judge_meter)
         checkpoint["resume_judge_usage"] = copy.deepcopy(judge_usage)
 
-    factories = {"generator": generator_factory, "oracle": oracle_factory}
+    factories = {"generator": generator_factory, "oracle": guide_factory}
     actor_streams = checkpoint.get("actor_streams") or {}
     restored_histories: dict[str, list[tuple[str, Any]]] = {}
     current_handles: dict[str, Any] = {}
@@ -4980,7 +4984,7 @@ def load_resume_state(
         phase=str(engine["phase"]),
         branches=branches,
         generator=current_handles["generator"],
-        oracle=current_handles["oracle"],
+        guide=current_handles["oracle"],
         k=float(engine.get("k", 0.0)),
         decisions=int(engine.get("decisions", 0)),
         checkouts=int(engine.get("checkouts", 0)),
@@ -4995,7 +4999,7 @@ def load_resume_state(
         submission_option_id=engine.get("submission_option_id"),
         submission_choice_bits=float(engine.get("submission_choice_bits", 0.0)),
         generator_history=restored_histories["generator"],
-        oracle_history=restored_histories["oracle"],
+        guide_history=restored_histories["oracle"],
         stage_transitions=stage_transitions,
         accounting_update=(
             reprice_events(prefix) if branches.accounting_version == LEGACY_ACCOUNTING else None
@@ -5252,7 +5256,7 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
         if manifest_data.get("generator_public_resources_ref")
         else manifest_data.get("generator_public_resources") or {}
     )
-    oracle_resources = (
+    guide_resources = (
         artifacts.load_json(manifest_data["oracle_public_resources_ref"])
         if manifest_data.get("oracle_public_resources_ref")
         else manifest_data.get("oracle_public_resources") or {}
@@ -5285,13 +5289,13 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
         ),
         "oracle": SubprocessActorFactory(
             submission.root,
-            str(manifest_data.get("oracle_entrypoint") or submission.oracle),
+            str(manifest_data.get("oracle_entrypoint") or submission.guide),
             constructor_args=() if sample_mode else (target,),
             service_factory=ServiceFactory(
                 seed=seed * 2 + 2,
                 model_backend=model_backend,
                 model_name=(manifest_data.get("models") or {}).get("oracle"),
-                public_resources=oracle_resources,
+                public_resources=guide_resources,
                 judge_call=replay_only_judge_call,
             ),
             dependency_paths=dependency_paths,
@@ -5337,7 +5341,7 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
         )
         pending = {
             "generator": actor_expectations.generator_pending,
-            "oracle": actor_expectations.oracle_pending,
+            "oracle": actor_expectations.guide_pending,
             "judge": _judge_call_is_pending(actor_expectations),
         }[role]
         if interrupted.get("branch_id") != expected_branch or not pending:
@@ -5423,14 +5427,14 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
         if any(tail_by_role.values()) and interrupted is None:
             raise ReplayDivergence("post-checkpoint service tail has no interrupted call")
         for role, events in tail_by_role.items():
-            nested_oracle_judge = bool(
+            nested_guide_judge = bool(
                 interrupted is not None
                 and interrupted.get("role") == "oracle"
                 and role == "judge"
                 and (all(event.error is None for event in events)
                      or _bound_failed_judge_tail(service_records[service_cursor:]))
             )
-            if events and interrupted.get("role") != role and not nested_oracle_judge:
+            if events and interrupted.get("role") != role and not nested_guide_judge:
                 raise ReplayDivergence("post-checkpoint service tail belongs to another role")
 
         actor_streams = durable.get("actor_streams") or {}
@@ -5517,7 +5521,7 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
         else:
             if tuple(item[0] for item in history) != ("root",):
                 raise ReplayDivergence("Oracle actor history must contain only root")
-            trusted_by_branch = {"root": actor_expectations.oracle_calls}
+            trusted_by_branch = {"root": actor_expectations.guide_calls}
 
         total_calls = 0
         current_service_event_count: int | None = None
@@ -5535,7 +5539,7 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
             pending_input = (
                 actor_expectations.pending_generator_input
                 if role == "generator"
-                else actor_expectations.pending_oracle_input
+                else actor_expectations.pending_guide_input
             )
             extra_pending_call = _assert_actor_calls_bound(
                 calls,
@@ -6051,12 +6055,12 @@ def actor_replay(run_directory: str | Path, *, model_backend: Any = None) -> dic
             judge_tape = _load_service_tape(judge_path)
             judge_calls = len(judge_tape)
             if judge_tape:
-                bound_oracle_tail = bool(
+                bound_guide_tail = bool(
                     interrupted is not None and interrupted.get("role") == "oracle"
                     and failed_service_context is not None
                     and _bound_failed_judge_tail(service_records[service_cursor:])
                     and len(judge_tape) == len(failed_service_context["tail_by_role"]["judge"]))
-                if interrupted is None or (interrupted.get("role") != "judge" and not bound_oracle_tail):
+                if interrupted is None or (interrupted.get("role") != "judge" and not bound_guide_tail):
                     raise ReplayDivergence(
                         "Judge service tail has no interrupted Judge call"
                     )

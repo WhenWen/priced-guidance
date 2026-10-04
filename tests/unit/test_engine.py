@@ -40,7 +40,7 @@ class BranchingGenerator:
         return Submission((Idea("answer", {"answer": choice.public_payload}, "1"),))
 
 
-class TimeTravelOracle:
+class TimeTravelGuide:
     def __init__(self, target, services):
         self.services = services
         self.first_question_id = None
@@ -56,14 +56,14 @@ class TimeTravelOracle:
         return Checkout(self.first_question_id)
 
 
-def test_time_travel_restores_generator_but_not_oracle() -> None:
+def test_time_travel_restores_generator_but_not_guide() -> None:
     runner = ArenaRunner(allow_time_travel=True)
     result = runner.run(
         generator_factory=ActorFactory(
             BranchingGenerator, service_factory=ServiceFactory(seed=1)
         ),
-        oracle_factory=ActorFactory(
-            TimeTravelOracle,
+        guide_factory=ActorFactory(
+            TimeTravelGuide,
             constructor_args=({"answer": "b"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -89,8 +89,8 @@ def test_time_travel_can_be_disabled_without_changing_participant_api() -> None:
             generator_factory=ActorFactory(
                 BranchingGenerator, service_factory=ServiceFactory(seed=1)
             ),
-            oracle_factory=ActorFactory(
-                TimeTravelOracle,
+            guide_factory=ActorFactory(
+                TimeTravelGuide,
                 constructor_args=({"answer": "b"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -114,8 +114,8 @@ def test_information_limit_rejects_choice_before_charging_or_stepping_generator(
             generator_factory=ActorFactory(
                 BranchingGenerator, service_factory=ServiceFactory(seed=1)
             ),
-            oracle_factory=ActorFactory(
-                TimeTravelOracle,
+            guide_factory=ActorFactory(
+                TimeTravelGuide,
                 constructor_args=({"answer": "b"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -146,8 +146,8 @@ def test_failed_generator_fork_does_not_commit_a_ghost_checkout() -> None:
                 BranchingGenerator,
                 service_factory=ServiceFactory(seed=1),
             ),
-            oracle_factory=ActorFactory(
-                TimeTravelOracle,
+            guide_factory=ActorFactory(
+                TimeTravelGuide,
                 constructor_args=({"answer": "b"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -177,7 +177,7 @@ class ImmediateSubmissionGenerator:
         )
 
 
-class SubmitOracle:
+class SubmitGuide:
     def __init__(self, _target, services):
         self.services = services
 
@@ -192,8 +192,8 @@ def test_terminal_submission_cost_obeys_information_limit() -> None:
             generator_factory=ActorFactory(
                 ImmediateSubmissionGenerator, service_factory=ServiceFactory(seed=1)
             ),
-            oracle_factory=ActorFactory(
-                SubmitOracle,
+            guide_factory=ActorFactory(
+                SubmitGuide,
                 constructor_args=({"answer": "blue"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -228,8 +228,8 @@ def test_runner_repeats_judge_and_charges_negative_log_pass_fraction() -> None:
             ImmediateSubmissionGenerator,
             service_factory=ServiceFactory(seed=1),
         ),
-        oracle_factory=ActorFactory(
-            SubmitOracle,
+        guide_factory=ActorFactory(
+            SubmitGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -271,8 +271,8 @@ def test_tolerated_probability_roundoff_cannot_create_mass_above_one() -> None:
         generator_factory=ActorFactory(
             TolerantSubmissionGenerator, service_factory=ServiceFactory(seed=1)
         ),
-        oracle_factory=ActorFactory(
-            SubmitOracle,
+        guide_factory=ActorFactory(
+            SubmitGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -309,7 +309,7 @@ class RetryAfterRejectedSubmissionGenerator:
         raise AssertionError(f"unexpected choice: {choice.option_id}")
 
 
-class RetryAfterRejectedSubmissionOracle:
+class RetryAfterRejectedSubmissionGuide:
     def __init__(self, _target, services):
         self.services = services
         self.root_question_id = None
@@ -341,8 +341,8 @@ def test_rejected_submission_is_private_recoverable_and_rewindable() -> None:
             RetryAfterRejectedSubmissionGenerator,
             service_factory=ServiceFactory(seed=1),
         ),
-        oracle_factory=ActorFactory(
-            RetryAfterRejectedSubmissionOracle,
+        guide_factory=ActorFactory(
+            RetryAfterRejectedSubmissionGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -354,7 +354,7 @@ def test_rejected_submission_is_private_recoverable_and_rewindable() -> None:
     assert result.status == "pass"
     assert result.submission_attempt_count == 2
     assert result.checkout_count == 1
-    assert result.oracle_decision_count == 4
+    assert result.guide_decision_count == 4
     assert result.question_count == 2
     # The rejected 0.25 SubmitOption is abandoned. The surviving path pays
     # revise (0.75), then submit, both with their first-occurrence mass 0.95.
@@ -364,7 +364,7 @@ def test_rejected_submission_is_private_recoverable_and_rewindable() -> None:
     assert checkout["path_k"] == pytest.approx(0.0)
     assert all("failed_attempt_bits" not in event for event in events)
     assert all("failed_attempt_bits_after" not in event for event in events)
-    assert runner.last_oracle.actor.saw_private_feedback
+    assert runner.last_guide.actor.saw_private_feedback
     assert all(
         not isinstance(call.message, SubmissionFeedback)
         for _, handle in runner.generator_history
@@ -399,7 +399,7 @@ class NoTimeTravelRetryGenerator:
         return Submission((Idea("right", {"answer": "blue"}, "1"),))
 
 
-class NoTimeTravelRetryOracle:
+class NoTimeTravelRetryGuide:
     def __init__(self, _target, services):
         self.failed = False
         self.attempt_id = None
@@ -425,8 +425,8 @@ def test_rejected_submission_without_time_travel_offers_only_self_recovery() -> 
             NoTimeTravelRetryGenerator,
             service_factory=ServiceFactory(seed=1),
         ),
-        oracle_factory=ActorFactory(
-            NoTimeTravelRetryOracle,
+        guide_factory=ActorFactory(
+            NoTimeTravelRetryGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -449,15 +449,15 @@ class UnauthorizedSubmissionGenerator:
         return Submission((Idea("guess", {"answer": "blue"}, "1"),))
 
 
-def test_generator_cannot_submit_without_oracle_authorization() -> None:
+def test_generator_cannot_submit_without_guide_authorization() -> None:
     with pytest.raises(ProtocolError, match="only after the oracle selects"):
         ArenaRunner().run(
             generator_factory=ActorFactory(
                 UnauthorizedSubmissionGenerator,
                 service_factory=ServiceFactory(seed=1),
             ),
-            oracle_factory=ActorFactory(
-                SubmitOracle,
+            guide_factory=ActorFactory(
+                SubmitGuide,
                 constructor_args=({"answer": "blue"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -475,7 +475,7 @@ class UnboundedDepthGenerator:
         return Question("continue", (Option("yes", "yes", "1"),))
 
 
-class AlwaysChooseOracle:
+class AlwaysChooseGuide:
     def __init__(self, _target, services):
         self.services = services
 
@@ -490,8 +490,8 @@ def test_question_depth_is_bounded_independently_of_question_count() -> None:
             generator_factory=ActorFactory(
                 UnboundedDepthGenerator, service_factory=ServiceFactory(seed=1)
             ),
-            oracle_factory=ActorFactory(
-                AlwaysChooseOracle,
+            guide_factory=ActorFactory(
+                AlwaysChooseGuide,
                 constructor_args=({},),
                 service_factory=ServiceFactory(seed=2),
             ),

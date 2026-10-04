@@ -86,7 +86,7 @@ def _service_record(role: str, kind: str, label: str) -> dict[str, object]:
     }
 
 
-def test_resume_tail_commits_nested_judge_calls_bound_to_replayed_oracle_proxy() -> None:
+def test_resume_tail_commits_nested_judge_calls_bound_to_replayed_guide_proxy() -> None:
     records = (
         _service_record("generator", "random.random", "committed-prefix"),
         _service_record("judge", "model.structured", "old-coarse"),
@@ -271,7 +271,7 @@ def test_recorded_smoke_run_supports_protocol_and_actor_replay(tmp_path: Path) -
     assert protocol_replay(legacy_directory)["status"] == "replayed"
 
 
-def test_actor_replay_replays_oracle_judge_preview_without_live_capability(
+def test_actor_replay_replays_guide_judge_preview_without_live_capability(
     tmp_path: Path,
 ) -> None:
     submission = tmp_path / "oracle-preview-pair"
@@ -426,7 +426,7 @@ class TwoStepSubmissionGenerator:
         return Submission((Idea("right", {"answer": "blue"}, "1"),))
 
 
-class TwoStepSubmissionOracle:
+class TwoStepSubmissionGuide:
     def __init__(self, _target, services):
         self.services = services
 
@@ -441,8 +441,8 @@ def test_protocol_replay_rejects_a_second_decision_while_generator_is_pending() 
             TwoStepSubmissionGenerator,
             service_factory=ServiceFactory(seed=1),
         ),
-        oracle_factory=ActorFactory(
-            TwoStepSubmissionOracle,
+        guide_factory=ActorFactory(
+            TwoStepSubmissionGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -452,7 +452,7 @@ def test_protocol_replay_rejects_a_second_decision_while_generator_is_pending() 
     )
     trace = [_jsonable(event) for event in events]
     first_question = next(event for event in trace if event["kind"] == "question")
-    first_oracle_index = next(
+    first_guide_index = next(
         index for index, event in enumerate(trace) if event["kind"] == "oracle_decision"
     )
     injected = [
@@ -478,14 +478,14 @@ def test_protocol_replay_rejects_a_second_decision_while_generator_is_pending() 
             "option_index": 1,
         },
     ]
-    invalid = trace[:first_oracle_index] + injected + trace[first_oracle_index:]
+    invalid = trace[:first_guide_index] + injected + trace[first_guide_index:]
 
     # Account for the extra paid choice so every later numeric/hash field is
     # self-consistent. The only invalidity is asking the Oracle again before
     # consuming the selected SubmitOption with a Generator output.
     existing_choice = next(
         event
-        for event in invalid[first_oracle_index + len(injected):]
+        for event in invalid[first_guide_index + len(injected):]
         if event["kind"] == "choice_cost"
     )
     existing_choice["branch_bits"] = 1.0
@@ -853,7 +853,7 @@ class Oracle:
         node = next(iter(value["branches"]["nodes"].values()))
         node["generator_checkpoint"]["call_count"] = 0
 
-    def oracle_cursor_tamper(value):
+    def guide_cursor_tamper(value):
         value["actors"]["oracle"]["call_count"] = 0
 
     def service_meter_tamper(value):
@@ -871,7 +871,7 @@ class Oracle:
         ("tampered-feedback", feedback_tamper),
         ("tampered-capability", capability_tamper),
         ("tampered-node-cursor", node_cursor_tamper),
-        ("tampered-oracle-cursor", oracle_cursor_tamper),
+        ("tampered-oracle-cursor", guide_cursor_tamper),
         ("tampered-service-meter", service_meter_tamper),
         ("tampered-service-call-cursor", service_call_cursor_tamper),
     ):
@@ -953,7 +953,7 @@ class OneQuestionGenerator:
         return Question("only", (Option("yes", "yes", "1"),))
 
 
-class InvalidCheckoutOracle:
+class InvalidCheckoutGuide:
     def __init__(self, _target, services):
         self.services = services
 
@@ -984,7 +984,7 @@ class MultiTargetFailureGenerator:
         return Question("third", (Option("unused", None, "1"),))
 
 
-class MultiTargetFailureOracle:
+class MultiTargetFailureGuide:
     def __init__(self, _target, services):
         self.first_id = None
         self.revisited = False
@@ -1029,8 +1029,8 @@ def test_submit_aware_error_before_any_judgment_replays_free_checkout(
                 MultiTargetFailureGenerator,
                 service_factory=ServiceFactory(seed=1),
             ),
-            oracle_factory=ActorFactory(
-                MultiTargetFailureOracle,
+            guide_factory=ActorFactory(
+                MultiTargetFailureGuide,
                 constructor_args=({},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -1073,7 +1073,7 @@ class PointerBudgetGenerator:
         )
 
 
-class PointerBudgetOracle:
+class PointerBudgetGuide:
     def __init__(self, _target, services):
         self.services = services
 
@@ -1116,8 +1116,8 @@ def test_repeat_judge_cost_is_durable_and_protocol_replayable(tmp_path: Path) ->
             PointerBudgetGenerator,
             service_factory=ServiceFactory(seed=1),
         ),
-        oracle_factory=ActorFactory(
-            PointerBudgetOracle,
+        guide_factory=ActorFactory(
+            PointerBudgetGuide,
             constructor_args=({"answer": "blue"},),
             service_factory=ServiceFactory(seed=2),
         ),
@@ -1190,8 +1190,8 @@ def test_choice_budget_failure_exports_replayable_branch_counters(
                 ChoiceBudgetGenerator,
                 service_factory=ServiceFactory(seed=1),
             ),
-            oracle_factory=ActorFactory(
-                PointerBudgetOracle,
+            guide_factory=ActorFactory(
+                PointerBudgetGuide,
                 constructor_args=({"answer": "blue"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -1242,8 +1242,8 @@ def test_protocol_replay_enforces_pointer_bits_on_error_and_pass_traces(
                 PointerBudgetGenerator,
                 service_factory=ServiceFactory(seed=1),
             ),
-            oracle_factory=ActorFactory(
-                PointerBudgetOracle,
+            guide_factory=ActorFactory(
+                PointerBudgetGuide,
                 constructor_args=({"answer": "blue"},),
                 service_factory=ServiceFactory(seed=2),
             ),
@@ -1291,8 +1291,8 @@ def test_partially_completed_failure_run_is_protocol_replayable(tmp_path: Path) 
             generator_factory=ActorFactory(
                 OneQuestionGenerator, service_factory=ServiceFactory(seed=1)
             ),
-            oracle_factory=ActorFactory(
-                InvalidCheckoutOracle,
+            guide_factory=ActorFactory(
+                InvalidCheckoutGuide,
                 constructor_args=({},),
                 service_factory=ServiceFactory(seed=2),
             ),

@@ -47,7 +47,7 @@ class Oracle:
         generator_factory=SubprocessActorFactory(
             tmp_path, "participant.generator:Generator", service_factory=ServiceFactory(seed=1)
         ),
-        oracle_factory=SubprocessActorFactory(
+        guide_factory=SubprocessActorFactory(
             tmp_path,
             "participant.oracle:Oracle",
             constructor_args=({"answer": "b"},),
@@ -63,10 +63,10 @@ class Oracle:
         assert result.k == pytest.approx(1.0 + occurrence_bits(1))
     finally:
         runner.runtime.close(runner.last_generator)
-        runner.runtime.close(runner.last_oracle)
+        runner.runtime.close(runner.last_guide)
 
 
-def test_a_subprocess_oracle_reaches_the_judge_through_its_services(
+def test_a_subprocess_guide_reaches_the_judge_through_its_services(
     tmp_path: Path,
 ) -> None:
     """The Oracle's Judge access has to survive the process boundary.
@@ -128,7 +128,7 @@ class Oracle:
         generator_factory=SubprocessActorFactory(
             tmp_path, "participant.generator:Generator", service_factory=ServiceFactory(seed=1)
         ),
-        oracle_factory=SubprocessActorFactory(
+        guide_factory=SubprocessActorFactory(
             tmp_path,
             "participant.oracle:Oracle",
             constructor_args=(target,),
@@ -142,4 +142,4 @@ class Oracle:
         assert result.status == "pass"
     finally:
         runner.runtime.close(runner.last_generator)
-        runner.runtime.close(runner.last_oracle)
+        runner.runtime.close(runner.last_guide)

@@ -16,7 +16,7 @@ class Generator:
         return Submission((Idea("i", {"answer": "same"}, "1"),))
 
 
-class RecordedDecisionOracle:
+class RecordedDecisionGuide:
     def __init__(self, target, services):
         # Deliberately hold decisions fixed across targets.
         self.target = target
@@ -30,8 +30,8 @@ def _visible_prefix(target):
     runner = ArenaRunner(event_sink=events.append)
     runner.run(
         generator_factory=ActorFactory(Generator, service_factory=ServiceFactory(seed=1)),
-        oracle_factory=ActorFactory(
-            RecordedDecisionOracle,
+        guide_factory=ActorFactory(
+            RecordedDecisionGuide,
             constructor_args=(target,),
             service_factory=ServiceFactory(seed=2),
         ),

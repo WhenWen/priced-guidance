@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .._compat import legacy_fields, legacy_keywords
+
 import math
 import uuid
 from dataclasses import dataclass
@@ -28,10 +30,11 @@ from ..errors import InvalidCheckout, ProtocolError, ResourceLimitExceeded
 from ..evaluation.base import Judge
 
 
+@legacy_fields(max_oracle_decisions='max_guide_decisions')
 @dataclass(frozen=True, slots=True)
 class RunLimits:
     max_questions: int = 256
-    max_oracle_decisions: int = 256
+    max_guide_decisions: int = 256
     max_checkouts: int = 64
     max_checkout_targets: int = 128
     max_checkout_rewind: int = 256
@@ -40,6 +43,7 @@ class RunLimits:
     max_bits: float = 1_024.0
 
 
+@legacy_fields(oracle_decision_count='guide_decision_count')
 @dataclass(frozen=True, slots=True)
 class RunResult:
     run_id: str
@@ -53,18 +57,19 @@ class RunResult:
     judge_pass_rate: float
     repeat_bits: float
     question_count: int
-    oracle_decision_count: int
+    guide_decision_count: int
     checkout_count: int
     submission_attempt_count: int
     branch_store: BranchStore
 
 
+@legacy_fields(oracle='guide', oracle_history='guide_history')
 @dataclass(slots=True)
 class EngineResumeState:
     phase: str
     branches: BranchStore
     generator: Any
-    oracle: Any
+    guide: Any
     k: float = 0.0
     decisions: int = 0
     checkouts: int = 0
@@ -79,7 +84,7 @@ class EngineResumeState:
     submission_option_id: str | None = None
     submission_choice_bits: float = 0.0
     generator_history: list[tuple[str, Any]] | None = None
-    oracle_history: list[tuple[str, Any]] | None = None
+    guide_history: list[tuple[str, Any]] | None = None
     stage_transitions: tuple[StageTransition, ...] = ()
     accounting_update: dict[str, Any] | None = None
 
@@ -108,10 +113,10 @@ class ArenaRunner:
         self.should_interrupt = should_interrupt
         self.judge_repeats = judge_repeats
         self.last_generator = None
-        self.last_oracle = None
+        self.last_guide = None
         self.last_branches = None
         self.generator_history: list[tuple[str, Any]] = []
-        self.oracle_history: list[tuple[str, Any]] = []
+        self.guide_history: list[tuple[str, Any]] = []
         self.interrupted_call: dict[str, str] | None = None
         self.active_stage_transitions: tuple[StageTransition, ...] = ()
 
@@ -177,11 +182,21 @@ class ArenaRunner:
             )
             self.interrupted_call = None
 
+    # Stored run roles still use the v1 "oracle" spelling.
+    @property
+    def last_oracle(self):
+        return self.last_guide
+
+    @property
+    def oracle_history(self):
+        return self.guide_history
+
+    @legacy_keywords(oracle_factory='guide_factory')
     def run(
         self,
         *,
         generator_factory: ActorFactory,
-        oracle_factory: ActorFactory,
+        guide_factory: ActorFactory,
         target: Any,
         judge: Judge,
         seed: int = 0,
@@ -198,9 +213,9 @@ class ArenaRunner:
             branches = BranchStore(run_id=run_id, seed=seed)
             self.last_branches = branches
             self.last_generator = None
-            self.last_oracle = None
+            self.last_guide = None
             self.generator_history = []
-            self.oracle_history = []
+            self.guide_history = []
             self._event(
                 "run_started",
                 run_id=run_id,
@@ -213,9 +228,9 @@ class ArenaRunner:
             generator = self.runtime.start(generator_factory)
             self.last_generator = generator
             self.generator_history.append(("root", generator))
-            oracle = self.runtime.start(oracle_factory)
-            self.last_oracle = oracle
-            self.oracle_history.append(("root", oracle))
+            guide = self.runtime.start(guide_factory)
+            self.last_guide = guide
+            self.guide_history.append(("root", guide))
             k = 0.0
             decisions = 0
             checkouts = 0
@@ -241,7 +256,7 @@ class ArenaRunner:
             branches = resume_state.branches
             branches.run_id = run_id
             generator = resume_state.generator
-            oracle = resume_state.oracle
+            guide = resume_state.guide
             k = float(resume_state.k)
             decisions = int(resume_state.decisions)
             checkouts = int(resume_state.checkouts)
@@ -260,9 +275,9 @@ class ArenaRunner:
             )
             self.last_branches = branches
             self.last_generator = generator
-            self.last_oracle = oracle
+            self.last_guide = guide
             self.generator_history = resume_state.generator_history or [(generator.branch_id, generator)]
-            self.oracle_history = resume_state.oracle_history or [(oracle.branch_id, oracle)]
+            self.guide_history = resume_state.guide_history or [(guide.branch_id, guide)]
             if resume_state.accounting_update is not None:
                 update = resume_state.accounting_update
                 previous_k = k
@@ -303,7 +318,7 @@ class ArenaRunner:
                     stage_transition,
                 )
                 self._apply_stage_transitions("generator", generator)
-                self._apply_stage_transitions("oracle", oracle)
+                self._apply_stage_transitions("oracle", guide)
             if stage_transition is not None or resume_state.accounting_update is not None:
                 self._checkpoint(
                     judge,
@@ -413,11 +428,11 @@ class ArenaRunner:
                     decisions,
                     checkouts,
                     submission_attempts=submission_attempts,
-                    before_oracle_call=True,
+                    before_guide_call=True,
                 )
                 decision = self._actor_call(
                     "oracle",
-                    oracle,
+                    guide,
                     PresentedQuestion(
                         current.question_id, current.question
                     ),
@@ -586,7 +601,7 @@ class ArenaRunner:
                         checkouts,
                         submission_attempts=submission_attempts,
                     )
-                    self.last_generator, self.last_oracle = generator, oracle
+                    self.last_generator, self.last_guide = generator, guide
                     return self._finish(
                         run_id,
                         outcome,
@@ -641,9 +656,9 @@ class ArenaRunner:
                     decisions,
                     checkouts,
                     submission_attempts=submission_attempts,
-                    before_oracle_call=True,
+                    before_guide_call=True,
                 )
-                decision = self._actor_call("oracle", oracle, submission_feedback)
+                decision = self._actor_call("oracle", guide, submission_feedback)
                 decisions += 1
                 self._event(
                     "oracle_decision",
@@ -765,11 +780,11 @@ class ArenaRunner:
         checkouts: int,
         *,
         submission_attempts: int,
-        before_oracle_call: bool = False,
+        before_guide_call: bool = False,
     ) -> None:
         self._enforce_information_limit(k)
-        if decisions > self.limits.max_oracle_decisions or (
-            before_oracle_call and decisions >= self.limits.max_oracle_decisions
+        if decisions > self.limits.max_guide_decisions or (
+            before_guide_call and decisions >= self.limits.max_guide_decisions
         ):
             raise ResourceLimitExceeded("oracle-decision limit exhausted")
         if checkouts > self.limits.max_checkouts:

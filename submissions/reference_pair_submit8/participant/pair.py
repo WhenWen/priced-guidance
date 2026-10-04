@@ -3221,7 +3221,7 @@ confirmed facts. Return only the requested JSON object.
 # keyword/MC. The appended MODULAR_DISPATCH_NOTES block remains a purely
 # descriptive account of what the modular Generator's priced routes do.
 
-_ORACLE_SYSTEM_PROMPT = """You are the private Oracle in a stateful idea-recovery arena.
+_GUIDE_SYSTEM_PROMPT = """You are the private Oracle in a stateful idea-recovery arena.
 
 ROLE AND INFORMATION BOUNDARY
 
@@ -3353,7 +3353,7 @@ no Markdown or surrounding prose.
 """
 
 
-_ORACLE_ACTION_SCHEMA: dict[str, Any] = {
+_GUIDE_ACTION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
@@ -3417,7 +3417,7 @@ def _modular_dispatch_notes(stage: str) -> str:
 _PROB_STRING = re.compile(r"-?\d+\.\d{8,}(?:[eE][+-]?\d+)?")
 
 
-def _oracle_leaf(value: Any) -> str:
+def _guide_leaf(value: Any) -> str:
     if value is None:
         return "(none)"
     if isinstance(value, bool):
@@ -3430,7 +3430,7 @@ def _oracle_leaf(value: Any) -> str:
     return text
 
 
-def _oracle_block(value: Any, indent: int = 0) -> str:
+def _guide_block(value: Any, indent: int = 0) -> str:
     """Generic indented rendering of event payloads (all keys and values kept)."""
 
     pad = "  " * indent
@@ -3442,26 +3442,26 @@ def _oracle_block(value: Any, indent: int = 0) -> str:
         for key, val in sorted(value.items(), key=lambda kv: str(kv[0])):
             if isinstance(val, (dict, list)) and val:
                 lines.append(f"{pad}{key}:")
-                lines.append(_oracle_block(val, indent + 1))
+                lines.append(_guide_block(val, indent + 1))
             else:
-                lines.append(f"{pad}{key}: {_oracle_leaf(val)}")
+                lines.append(f"{pad}{key}: {_guide_leaf(val)}")
         return "\n".join(lines)
     if isinstance(value, list):
         lines = []
         for item in value:
             if isinstance(item, (dict, list)) and item:
-                rendered = _oracle_block(item, indent + 1)
+                rendered = _guide_block(item, indent + 1)
                 first, _, rest = rendered.partition("\n")
                 lines.append(f"{pad}- {first.strip()}")
                 if rest:
                     lines.append(rest)
             else:
-                lines.append(f"{pad}- {_oracle_leaf(item)}")
+                lines.append(f"{pad}- {_guide_leaf(item)}")
         return "\n".join(lines)
-    return f"{pad}{_oracle_leaf(value)}"
+    return f"{pad}{_guide_leaf(value)}"
 
 
-def _oracle_prob(probability: Any) -> str:
+def _guide_prob(probability: Any) -> str:
     try:
         return f"{float(str(probability)):.4g}"
     except (TypeError, ValueError):
@@ -3471,7 +3471,7 @@ def _oracle_prob(probability: Any) -> str:
 def _render_options(options: list[dict[str, Any]]) -> str:
     lines: list[str] = []
     for row in options:
-        head = f"- option_id={row['option_id']}  p={_oracle_prob(row['probability'])}"
+        head = f"- option_id={row['option_id']}  p={_guide_prob(row['probability'])}"
         if row.get("option_type") == "submit":
             head += "  [submit]"
         lines.append(head)
@@ -3488,7 +3488,7 @@ def _render_options(options: list[dict[str, Any]]) -> str:
                 and key not in {"generator_whiteboard", "generator_idea_snapshot"}
             }
         if payload is not None:
-            lines.append(_oracle_block(payload, 2))
+            lines.append(_guide_block(payload, 2))
     return "\n".join(lines)
 
 
@@ -3499,9 +3499,9 @@ def _render_judge_preview(preview: Any) -> str:
     for idea in (preview.get("submission") or {}).get("ideas", []):
         lines.append(
             f"  previewed draft (idea_id={idea['idea_id']}, "
-            f"p={_oracle_prob(idea['probability'])}):"
+            f"p={_guide_prob(idea['probability'])}):"
         )
-        lines.append(_oracle_block(idea["content"], 2))
+        lines.append(_guide_block(idea["content"], 2))
     for verdict in preview.get("verdicts", []):
         outcome = "PASS" if verdict.get("passed") else "FAIL"
         lines.append(
@@ -3529,7 +3529,7 @@ def _canonical_event_data(value: Any) -> Any:
     return json.loads(json.dumps(value, ensure_ascii=False, sort_keys=True, default=str))
 
 
-def _render_oracle_event(row: dict[str, Any]) -> str:
+def _render_guide_event(row: dict[str, Any]) -> str:
     row = _canonical_event_data(row)
     event_type = row.get("event_type")
     if event_type == "presented_question":
@@ -3583,9 +3583,9 @@ def _render_oracle_event(row: dict[str, Any]) -> str:
         ]
         for idea in row["submission"]["ideas"]:
             parts.append(
-                f"- idea_id={idea['idea_id']}  p={_oracle_prob(idea['probability'])}"
+                f"- idea_id={idea['idea_id']}  p={_guide_prob(idea['probability'])}"
             )
-            parts.append(_oracle_block(idea["content"], 2))
+            parts.append(_guide_block(idea["content"], 2))
         parts.append("")
         parts.append("verdicts (private Judge feedback; never reveal to the Generator):")
         for verdict in row["verdicts"]:
@@ -3611,7 +3611,7 @@ def _render_oracle_event(row: dict[str, Any]) -> str:
             ]
         )
     # Future event types stay visible rather than being dropped.
-    return _oracle_block(row)
+    return _guide_block(row)
 
 
 def _idea_snapshot(presented: PresentedQuestion) -> dict[str, Any] | None:
@@ -3736,7 +3736,7 @@ def _feedback_event(
 # be compacted away; what the Generator believes arrives with each dispatch
 # anyway; and state_summary carries the only thing left -- what was bought,
 # what failed, and the plan. Nothing about the context is decided elsewhere.
-class Oracle:
+class Guide:
     """Persistent multi-turn agent Oracle ported from the reference pair."""
 
     def __init__(self, target: Any, services: Any) -> None:
@@ -3797,9 +3797,9 @@ class Oracle:
         """
 
         return self.services.structured_model(
-            developer=_ORACLE_SYSTEM_PROMPT,
+            developer=_GUIDE_SYSTEM_PROMPT,
             user=user,
-            schema=_ORACLE_ACTION_SCHEMA,
+            schema=_GUIDE_ACTION_SCHEMA,
             schema_name="oracle_action",
             max_output_tokens=MODEL_MAX_OUTPUT_TOKENS,
             reasoning_effort="high",
@@ -3811,7 +3811,7 @@ class Oracle:
             "<MATCH_INIT>\n"
             "<TARGET_DATA>\n"
             "=== TARGET PAPER (secret; only you know this) ===\n"
-            f"{_oracle_block(_canonical_event_data(self.target))}\n"
+            f"{_guide_block(_canonical_event_data(self.target))}\n"
             "</TARGET_DATA>\n"
             "<JUDGE_DATA>\n"
             f"=== ACTIVE JUDGE (stage: {self.stage}) ===\n"
@@ -3832,7 +3832,7 @@ class Oracle:
     ) -> Choice | Checkout | StageReady:
         if isinstance(value, StageTransition):
             return self._transition(value)
-        return _stage_actor_call(self.stage, "oracle_step", self, value)
+        return _stage_actor_call(self.stage, "guide_step", self, value)
 
     def _transition(self, value: StageTransition) -> StageReady:
         """Switch the stable actor shell to a replaceable target policy."""
@@ -3843,7 +3843,7 @@ class Oracle:
         if value.from_stage != self.stage or value.to_stage not in STAGES:
             raise ValueError("stage transition does not match Oracle state")
         on_enter = getattr(
-            _stage_actor_module(value.to_stage), "oracle_on_enter", None
+            _stage_actor_module(value.to_stage), "guide_on_enter", None
         )
         if not callable(on_enter):
             raise TypeError(
@@ -3869,7 +3869,7 @@ class Oracle:
             )
         return StageReady(self.stage, {"oracle_policy_stage": self.stage})
 
-    def _shared_oracle_step(
+    def _shared_guide_step(
         self, value: PresentedQuestion | SubmissionFeedback
     ) -> Choice | Checkout:
         """Frozen default Oracle turn invoked by the active stage policy."""
@@ -3929,7 +3929,7 @@ class Oracle:
         events = [*self.pending_stage_events, event]
         self.pending_stage_events = []
         event_text = "\n".join(
-            f"<ARENA_EVENT>\n{_render_oracle_event(row)}\n</ARENA_EVENT>"
+            f"<ARENA_EVENT>\n{_render_guide_event(row)}\n</ARENA_EVENT>"
             for row in events
         )
         user = self._match_init_text() + "\n\n"
@@ -4013,3 +4013,16 @@ class Oracle:
 # defined, and the import still happens inside the manifest mount window.
 for _policy_stage in STAGES:
     _stage_channels(_policy_stage)
+
+
+# Legacy Python names remain available for existing submissions.
+_ORACLE_SYSTEM_PROMPT = _GUIDE_SYSTEM_PROMPT
+_ORACLE_ACTION_SCHEMA = _GUIDE_ACTION_SCHEMA
+_oracle_leaf = _guide_leaf
+_oracle_block = _guide_block
+_oracle_prob = _guide_prob
+_render_oracle_event = _render_guide_event
+Oracle = Guide
+
+# Compatibility with stage modules from existing submissions.
+Guide._shared_oracle_step = Guide._shared_guide_step

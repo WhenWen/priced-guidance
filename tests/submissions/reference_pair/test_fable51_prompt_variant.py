@@ -34,10 +34,10 @@ def test_fable51_variant_is_a_valid_standalone_submission() -> None:
     assert manifest.name == "reference-pair-fable51"
     assert manifest.version == "1.17.5"
     assert manifest.generator == "participant.generator:Generator"
-    assert manifest.oracle == "participant.oracle:Oracle"
+    assert manifest.guide == "participant.guide:Guide"
 
 
-def test_fable51_variant_changes_only_oracle_output_wording() -> None:
+def test_fable51_variant_changes_only_guide_output_wording() -> None:
     base_files = {
         path.relative_to(BASE)
         for path in BASE.rglob("*")
@@ -63,10 +63,10 @@ def test_fable51_variant_changes_only_oracle_output_wording() -> None:
     assert actual_differences == expected_differences
 
 
-def test_fable51_oracle_contract_avoids_reasoning_extraction_language() -> None:
+def test_fable51_guide_contract_avoids_reasoning_extraction_language() -> None:
     pair_path = VARIANT / "participant" / "pair.py"
-    prompt = _literal_assignment(pair_path, "_ORACLE_SYSTEM_PROMPT")
-    schema = _literal_assignment(pair_path, "_ORACLE_ACTION_SCHEMA")
+    prompt = _literal_assignment(pair_path, "_GUIDE_SYSTEM_PROMPT")
+    schema = _literal_assignment(pair_path, "_GUIDE_ACTION_SCHEMA")
 
     forbidden = (
         "<concise private rationale>",

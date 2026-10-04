@@ -1,11 +1,3 @@
-from tech_tree_arena import Choice, PresentedQuestion
+"""Compatibility entrypoint for existing oracle manifests."""
 
-
-class Oracle:
-    def __init__(self, target, services):
-        self.answer = target["answer"]
-        self.services = services
-
-    def step(self, question: PresentedQuestion):
-        return Choice(self.answer)
-
+from participant.guide import Guide, Oracle

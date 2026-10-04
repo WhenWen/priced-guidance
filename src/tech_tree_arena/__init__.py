@@ -9,8 +9,8 @@ from .contract.messages import (
     IdeaVerdict,
     JsonValue,
     Option,
-    OracleDecision,
-    OracleInput,
+    GuideDecision,
+    GuideInput,
     PresentedQuestion,
     Question,
     QuestionOption,
@@ -51,6 +51,7 @@ __all__ = [
 def __getattr__(name: str):
     if name in {
         "ProbabilitySamplingOracle",
+        "ProbabilitySamplingGuide",
         "SampledChoice",
         "SampledIdeas",
         "resume_sample_ideas",
@@ -62,3 +63,9 @@ def __getattr__(name: str):
     raise AttributeError(name)
 
 __version__ = "0.1.0"
+
+# Legacy imported names.
+OracleDecision = GuideDecision
+OracleInput = GuideInput
+
+__all__ += ['GuideDecision', 'GuideInput', 'ProbabilitySamplingGuide']

@@ -10,7 +10,7 @@ import pytest
 from tech_tree_arena import (
     Option,
     PresentedQuestion,
-    ProbabilitySamplingOracle,
+    ProbabilitySamplingGuide,
     Question,
     SubmitOption,
     resume_sample_ideas,
@@ -35,7 +35,7 @@ class FixedRandomServices:
         return self.draw
 
 
-def test_probability_sampling_oracle_uses_generator_distribution() -> None:
+def test_probability_sampling_guide_uses_generator_distribution() -> None:
     question = PresentedQuestion(
         "q1",
         Question(
@@ -48,9 +48,9 @@ def test_probability_sampling_oracle_uses_generator_distribution() -> None:
         ),
     )
 
-    assert ProbabilitySamplingOracle(FixedRandomServices(0.199)).step(question).option_id == "first"
-    assert ProbabilitySamplingOracle(FixedRandomServices(0.2)).step(question).option_id == "second"
-    assert ProbabilitySamplingOracle(FixedRandomServices(0.999)).step(question).option_id == "last"
+    assert ProbabilitySamplingGuide(FixedRandomServices(0.199)).step(question).option_id == "first"
+    assert ProbabilitySamplingGuide(FixedRandomServices(0.2)).step(question).option_id == "second"
+    assert ProbabilitySamplingGuide(FixedRandomServices(0.999)).step(question).option_id == "last"
 
 
 def test_draft_preview_reads_generator_committed_option_payloads() -> None:
@@ -128,7 +128,7 @@ class Generator:
     )
 
 
-def test_sample_ideas_replaces_original_oracle_and_returns_submission(tmp_path: Path) -> None:
+def test_sample_ideas_replaces_original_guide_and_returns_submission(tmp_path: Path) -> None:
     pair = tmp_path / "pair"
     _write_pair(pair)
 
@@ -138,7 +138,7 @@ def test_sample_ideas_replaces_original_oracle_and_returns_submission(tmp_path: 
 
     assert first.ideas[0].content == {"answer": "low"}
     assert first.choices[0].probability == "0.25"
-    assert first.oracle_usage["random_calls"] == 1
+    assert first.guide_usage["random_calls"] == 1
     assert second.ideas[0].content == {"answer": "high"}
     assert second.choices[0].probability == "0.75"
     manifest = json.loads((Path(first.run_dir) / "manifest.json").read_text())

@@ -134,7 +134,7 @@ def _audit(root: Path, *, expected_effort="xhigh", expected_model="gpt-6-astra",
     problems = []
     route_sizes = defaultdict(list)
     retry_only = []
-    oracle_visible = 0
+    guide_visible = 0
     for qid, event in questions.items():
         options = event["question"]["options"]
         if not options or (options[0].get("public_payload") or {}).get("kind") != "dispatch":
@@ -168,18 +168,18 @@ def _audit(root: Path, *, expected_effort="xhigh", expected_model="gpt-6-astra",
                     problems.append(f"submit preview idea count differs from stage policy at {qid}")
         if any(option["public_payload"]["bundle_id"] != digest(source) for option in options):
             problems.append(f"bundle binding mismatch at {qid}")
-        oracle_calls = [row for row in services if row["role"] == "oracle"
+        guide_calls = [row for row in services if row["role"] == "oracle"
                         and f"question_id: {qid}\n" in str(row["service"].get("request", {}).get("user", ""))]
-        if oracle_calls:
+        if guide_calls:
             # The ordinary routes cannot be hidden by the failed-submit guard.
             visible = all(any(render([{"option_id": option["option_id"],
                 "probability": option["probability"], "option_type": "answer",
                 "public_payload": option["public_payload"]}]) in row["service"]["request"]["user"]
-                for row in oracle_calls) for option in options if option["public_payload"]["mode"] != "submit")
+                for row in guide_calls) for option in options if option["public_payload"]["mode"] != "submit")
             if not visible:
                 problems.append(f"Oracle did not receive exact complete previews at {qid}")
             else:
-                oracle_visible += 1
+                guide_visible += 1
 
     activations = []
     cursor_counts = activation_cursors(root)
@@ -347,10 +347,10 @@ def _audit(root: Path, *, expected_effort="xhigh", expected_model="gpt-6-astra",
             "estimated_standard_credits": credit_estimate,
             "credit_estimate_source": "https://learn.chatgpt.com/docs/pricing#what-are-tokens-and-credits",
             "credit_estimate_note": "Token-rate equivalent, not purchased-credit deduction; reported cache writes use the API guide's 1.25x input premium as an estimate. Account snapshots are separate.",
-            "dispatches": len(dispatches), "dispatches_with_complete_previews_in_oracle_prompt": oracle_visible,
+            "dispatches": len(dispatches), "dispatches_with_complete_previews_in_oracle_prompt": guide_visible,
             "preview_sizes_by_route": dict(route_sizes), "retry_only_previews": retry_only,
             "activations": activations, "actor_cursor_activation_service_deltas": cursor_activations,
-            "pending_dispatches_without_oracle_call": len(dispatches) - oracle_visible,
+            "pending_dispatches_without_oracle_call": len(dispatches) - guide_visible,
             "problems": problems}
 
 

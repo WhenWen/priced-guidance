@@ -14,23 +14,23 @@ The arena plays an idea-recovery game over a hidden target paper:
 
 - The **Generator** is target-blind. It authors finite Questions (option slates
   with declared probabilities) and eventually a Submission.
-- The **Oracle** holds the private gold summary. It communicates with the
+- The **Guide** holds the private gold summary. It communicates with the
   Generator ONLY by selecting one displayed option per Question. Selecting an
   option with displayed probability `p` costs roughly `-log2(p)` bits; the run
   score `K` is the accumulated information cost along the active path.
 - The **Judge** (GPT-5.5, evaluation-owned) grades Submissions against gold.
-  Judge feedback is private to the Oracle and must never enter Generator state.
+  Judge feedback is private to the Guide and must never enter Generator state.
 - Three Judge rungs form a ladder: **directional** (same problem/area/
   contribution type + plausible mechanism) -> **essence** (recognizable defining
   mechanism, coarse) -> **strict/fmn** (exact defining mechanism, faithful
   scope, no overclaims). A pass at rung N can be promoted to rung N+1 by
   forking the run at its private before-judge boundary.
 
-Models: the Generator and Oracle each make ordinary structured model calls
+Models: the Generator and Guide each make ordinary structured model calls
 through the injected services (`IDEA_ARENA_GENERATOR_MODEL` /
-`IDEA_ARENA_ORACLE_MODEL`); GPT-5.5 is the Judge. There is no persistent CLI
+`IDEA_ARENA_GUIDE_MODEL`); GPT-5.5 is the Judge. There is no persistent CLI
 conversation in the default profile — see §5 for why, and §5.4 for the
-optional `--oracle-agent` lane (including a human oracle).
+optional `--guide-agent` lane (including a human guide).
 
 ## 2. Package layout
 
@@ -40,7 +40,7 @@ submissions/reference_pair/
   README.md                  # public participant description (info-boundary safe)
   participant/
     generator.py             # entrypoint: re-exports Generator from pair.py
-    oracle.py                # entrypoints: Oracle (default) and AgentOracle
+    guide.py                # entrypoints: Guide (default) and AgentGuide
     pair.py                  # SHARED: stable actor shell, ledger/toolkit, dynamic dispatcher
     stages/
       directional.py          # complete Directional actor policy + prompts/menu
@@ -55,7 +55,7 @@ submissions/reference_pair/
 entrypoints, README), `directional`, `essence`, `strict` — each stage group
 holds the stage module plus its channels file. Promotion freezes `shared` plus
 every completed stage group (§7.3). Shared owns only behavior that is truly
-frozen across the whole ladder; every replaceable Generator/Oracle decision
+frozen across the whole ladder; every replaceable Generator/Guide decision
 enters through the active stage group's function interface.
 
 ## 3. Stage modules: the only stage-specific surface
@@ -65,9 +65,9 @@ stage-owned keyword channels file in the same hash group:
 
 | Attribute | Role |
 |---|---|
-| `JUDGE_CRITERION` | Exact current-rung criterion rendered into this stage's Oracle prompt; an earlier prompt never reads a later module |
-| `generator_step` / `oracle_step` | Complete replaceable message-handling boundary for the two actors; a stage may wrap or replace the shared default locally |
-| `generator_on_enter` / `oracle_on_enter` | Service-free destination-stage initialization hooks; new keys use `setdefault` so the shared constructor remains frozen |
+| `JUDGE_CRITERION` | Exact current-rung criterion rendered into this stage's Guide prompt; an earlier prompt never reads a later module |
+| `generator_step` / `guide_step` | Complete replaceable message-handling boundary for the two actors; a stage may wrap or replace the shared default locally |
+| `generator_on_enter` / `guide_on_enter` | Service-free destination-stage initialization hooks; new keys use `setdefault` so the shared constructor remains frozen |
 | `dispatch_question`, `mc_question`, `candidate_question`, `run_state_update`, `correction_*`, `submission` | Fine-grained Generator seams, allowing one later-stage mechanism to change without copying the whole dispatcher |
 | `STAGE_GOAL` | Stage-aware goal injected into every Generator prompt: names the ladder rung, the current rung's public Judge criterion, and what earlier rungs established |
 | `DROPPED_ROUTES` | Routes this stage does not display (see §4.3); displayed probabilities renormalize over the remaining menu |
@@ -102,7 +102,7 @@ any fact lands, so no whole-draft channel is needed to bootstrap.
 ### 4.3 Dispatch: exact eager previews
 
 The current implementation authors and caches every displayed route's complete
-downstream Question before the Oracle chooses. Each dispatch option contains
+downstream Question before the Guide chooses. Each dispatch option contains
 that exact serialized Question, including its option IDs, payloads and final
 probabilities. The bundle is bound to the source stage, current draft and fact
 ledger hash. Selecting a route activates its cached Question without another
@@ -167,7 +167,7 @@ the draft is wrong.
   the draft rewrite to one localized region and rejects malformed mode/claim
   pairs, duplicate drafts, and unchanged drafts.
 - **submit** — a SubmitOption carrying the current draft as the idea. The
-  Oracle gates it on its own Judge reading (§5.3); the runtime attaches
+  Guide gates it on its own Judge reading (§5.3); the runtime attaches
   nothing.
 
 ### 4.5 Pricing mechanics
@@ -186,26 +186,26 @@ ledger is a valid state, never a provider error.
 `StageTransition` messages are Arena-authored, service-free, and add no bits.
 The shared shell validates the edge, flips `state["stage"]`, invokes the
 destination module's `generator_on_enter`, keeps the full ledger, and hands off
-a private summary (`StageReady.handoff`). The Oracle similarly invokes
-`oracle_on_enter`. Pending slates survive transitions so later-stage Oracles
+a private summary (`StageReady.handoff`). The Guide similarly invokes
+`guide_on_enter`. Pending slates survive transitions so later-stage Guides
 can checkout historical Questions; the newly active stage remains responsible
 for consuming those frozen earlier payload shapes.
 
-## 5. Oracle architecture: full context, one call per turn (v1.11)
+## 5. Guide architecture: full context, one call per turn (v1.11)
 
 ### 5.1 Design and why the CLI conversation was dropped
 
-Through v1.10 the Oracle ran as one persistent CLI conversation. Measuring
+Through v1.10 the Guide ran as one persistent CLI conversation. Measuring
 what that conversation actually did was alarming: the CLI compacted it on its
 own, losing 40-84% of the context, as often inside a session as at a
 deliberate restart, and the binary deciding when lived in an auto-updating
 desktop app whose version changed underneath the experiments.
 
-v1.11 keeps the Oracle and drops the conversation. Every turn is one ordinary
+v1.11 keeps the Guide and drops the conversation. Every turn is one ordinary
 structured model call carrying, in full: `MATCH_INIT` verbatim (gold target
 JSON, the active rung's exact Judge criterion, arena rules, and a purely
 descriptive `MODULAR_DISPATCH_NOTES` block explaining every route), the
-Oracle's own last `state_summary` inside `<RESUMED_PRIVATE_STATE>`, and the
+Guide's own last `state_summary` inside `<RESUMED_PRIVATE_STATE>`, and the
 current `ARENA_EVENT`. Gold, criterion, and rules can no longer be compacted
 away; every call is priced through the Arena's own provider client, so no
 turn can go unaccounted. Output is a strict 5-field JSON action (`choose` an
@@ -222,8 +222,8 @@ next dispatch to rediscover that relation rather than refining the same guess.
 
 ### 5.2 What replaced local bookkeeping
 
-The old stateless per-Choice Oracle's enforcement (just-rejected-channel
-masking, exhausted-correction tracking) lives in the Oracle's own
+The old stateless per-Choice Guide's enforcement (just-rejected-channel
+masking, exhausted-correction tracking) lives in the Guide's own
 `state_summary`; taxonomy questions are answered as ordinary priced Choices
 from gold.
 
@@ -232,20 +232,20 @@ from gold.
 Transitions perform no service call; the criterion change is queued and
 delivered as an ordinary `ARENA_EVENT` prefixed to the next paid turn.
 
-Judge previews belong to the Oracle: it calls the injected
+Judge previews belong to the Guide: it calls the injected
 `services.judge_evaluate(ideas)` itself, once per distinct draft (an unchanged
 draft cannot earn a different verdict). The Arena used to attach previews on a
 fixed schedule; that scheduling is removed. The Judge stays Arena-owned, its
 spend lands on the Judge's own budget, and the call is taped for replay. A
-profile that gives the Oracle no Judge simply goes without.
+profile that gives the Guide no Judge simply goes without.
 
-### 5.4 Optional agent-backend lane (`--oracle-agent`)
+### 5.4 Optional agent-backend lane (`--guide-agent`)
 
-Passing `--oracle-agent {claude-code,codex,human}` swaps the oracle entrypoint
-to `participant.oracle:AgentOracle`, which sends the **identical** per-turn
+Passing `--guide-agent {claude-code,codex,human}` swaps the guide entrypoint
+to `participant.guide:AgentGuide`, which sends the **identical** per-turn
 prompt through `services.agent_turn` instead of `structured_model`:
 
-1. **human** — `HumanOracleBackend` writes each turn to
+1. **human** — `HumanGuideBackend` writes each turn to
    `run_dir/agent-workspace/oracle/human/turn-NNNN.request.md` and blocks until
    a person writes the matching `.answer.json`. Human turns record zero model
    usage. Timeouts default to a day; the actor wall clock is raised to match.
@@ -256,9 +256,9 @@ prompt through `services.agent_turn` instead of `structured_model`:
    Anthropic's exact sheet.
 
 Sessions are fresh per turn (the v1.11 full-context transport is preserved; no
-CLI decides what the Oracle remembers), and every turn is journaled and
+CLI decides what the Guide remembers), and every turn is journaled and
 replayable like any other service call. The chosen backend is pinned in the
-run manifest; resume and promotion rebuild it from there (`--oracle-agent` on
+run manifest; resume and promotion rebuild it from there (`--guide-agent` on
 `resume` overrides it explicitly and records the override).
 
 There is no Generator counterpart: the agent-Generator lane was removed
@@ -269,7 +269,7 @@ There is no Generator counterpart: the agent-Generator lane was removed
 Judges are evaluation-owned (`research-directional/-essence/-fmn`, GPT-5.5).
 A coarse pre-screen gates the full judgment. Formal submissions that fail
 return private `SubmissionFeedback` (verdicts + mandatory checkout targets) to
-the Oracle only; the Oracle-requested preview path is §5.3.
+the Guide only; the Guide-requested preview path is §5.3.
 
 ## 7. Runtime guarantees the scaffold depends on
 
@@ -309,15 +309,15 @@ The sibling channels file is covered by the same stage hash.
 The shared dispatcher uses dynamic loading. A static import from shared into a
 stage is rejected by manifest validation, and an earlier stage must not read a
 later stage's route menu, criterion, or actor function while producing replayed
-output. The Oracle therefore renders only the active stage's criterion and
+output. The Guide therefore renders only the active stage's criterion and
 route sentence; changing Strict cannot perturb a Directional service request.
 
 ### 7.4 Ladder orchestration
 
 `tools/run_judge_ladder.py` runs best-of-N per stage with exact nested prefix
 curves, records per-target `ladder.json` (experiment identity includes the
-submission hash, caps, and oracle-agent config), auto-promotes passing rungs
-(`--stop-after`), and passes through `--oracle-agent*` flags.
+submission hash, caps, and guide-agent config), auto-promotes passing rungs
+(`--stop-after`), and passes through `--guide-agent*` flags.
 
 ## 8. Operations manual
 
@@ -344,11 +344,11 @@ uv run idea-arena replay --actor <run>
 
 ## 9. Known issues and open questions
 
-1. **Per-paper judge criteria are public text in the Oracle prompt**; the
+1. **Per-paper judge criteria are public text in the Guide prompt**; the
    Judge's actual rubric is richer (coarse screen + full grading). Divergence
    between the stated criterion and the real screen has shown up as
    "preview passes but formal judgment rejects".
-2. **Submit gating rhythm**: the Oracle reads the Judge once per distinct
+2. **Submit gating rhythm**: the Guide reads the Judge once per distinct
    draft, so a draft completed mid-loop (e.g. final keyword acceptance) is
    preview-checked when it next appears in a dispatch question.
 3. **Route menus are tuned on small samples** (tens of recorded dispatches per

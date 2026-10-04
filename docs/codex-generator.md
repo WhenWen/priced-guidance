@@ -79,18 +79,18 @@ uv run idea-arena sample-ideas submissions/reference_pair \
   --generator-model gpt-6-astra \
   --generator-codex-auth-home ~/.local/share/idea-arena/codex-accounts/experiment
 
-# Scored evaluation; Oracle/Judge keep their existing configured backends:
+# Scored evaluation; Guide/Judge keep their existing configured backends:
 uv run idea-arena run submissions/reference_pair \
   --target-pack development40 --target TARGET_ID --judge directional \
   --generator-backend codex --generator-model gpt-6-astra \
   --generator-codex-effort xhigh \
   --generator-codex-auth-home ~/.local/share/idea-arena/codex-accounts/experiment \
-  --env-file /path/to/oracle-and-judge.env
+  --env-file /path/to/guide-and-judge.env
 ```
 
 The smoke pair makes no semantic model calls; use the native-history probe below
-for live account/model validation. `sample-ideas` uses no Oracle/Judge API calls.
-Scored runs still need the existing Oracle/Judge credentials unless their
+for live account/model validation. `sample-ideas` uses no Guide/Judge API calls.
+Scored runs still need the existing Guide/Judge credentials unless their
 existing alternative backends are selected. `resume` automatically reconstructs
 the recorded Codex backend and requires the same pinned build and account path.
 `--generator-codex-effort xhigh` selects Extra High for every Generator call;

@@ -3,7 +3,7 @@
 From September 5, 2026, new structured-model requests default to **50,000
 output tokens**. The service gateway's default per-call limit is also 50,000,
 so it does not silently reduce a reference request to the former 32,000 cap.
-The reference Generator and Oracle use this allowance in every stage and
+The reference Generator and Guide use this allowance in every stage and
 channel, and the research Judge uses it too. Direct callers can still request
 a smaller allowance; an explicitly configured service limit remains binding.
 

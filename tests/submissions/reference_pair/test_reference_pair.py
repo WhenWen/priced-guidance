@@ -33,7 +33,7 @@ from tech_tree_arena.submission_io.manifest import (
 
 _ROOT = Path(__file__).resolve().parents[3]
 _PAIR = _ROOT / "submissions" / "reference_pair"
-ModularGenerator, ModularOracle = load_participant_classes(load_manifest(_PAIR))
+ModularGenerator, ModularGuide = load_participant_classes(load_manifest(_PAIR))
 _PAIR_GLOBALS = ModularGenerator.__init__.__globals__
 
 
@@ -299,7 +299,7 @@ def test_strict_stage_goal_routes_faithfulness_before_missing_detail() -> None:
     assert goal.index("first remove") < goal.index("only then add")
 
 
-def test_oracle_route_lists_name_only_routes_the_stage_displays(monkeypatch) -> None:
+def test_guide_route_lists_name_only_routes_the_stage_displays(monkeypatch) -> None:
     # A hand-written route list once told the Oracle that explore and
     # differentiate were displayed at every stage. Strict has never displayed
     # either, and a dLLM Strict run paid for a correction-axis retry whose
@@ -328,7 +328,7 @@ def test_oracle_route_lists_name_only_routes_the_stage_displays(monkeypatch) -> 
     assert notes_for("strict") != directional_before
 
 
-def test_oracle_prompt_deletes_unsupported_interpretation_before_rediscovery() -> None:
+def test_guide_prompt_deletes_unsupported_interpretation_before_rediscovery() -> None:
     prompt = " ".join(_PAIR_GLOBALS["_ORACLE_SYSTEM_PROMPT"].split())
     delete_policy = "prefer a delete patch that completely retracts"
     rediscovery_policy = "at the next dispatch prefer keyword or MC"
@@ -340,7 +340,7 @@ def test_oracle_prompt_deletes_unsupported_interpretation_before_rediscovery() -
     assert prompt.index(delete_policy) < prompt.index(rediscovery_policy)
 
 
-def test_oracle_prompt_uses_title_mechanism_as_taxonomy_bottleneck() -> None:
+def test_guide_prompt_uses_title_mechanism_as_taxonomy_bottleneck() -> None:
     prompt = " ".join(_PAIR_GLOBALS["_ORACLE_SYSTEM_PROMPT"].split())
 
     assert "treat taxonomy and category choices as search commitments" in prompt
@@ -1455,7 +1455,7 @@ def test_semantic_correction_path_prices_mode_claim_patch_and_submit_without_lea
                 return self._dispatch_question()
             return super().step(value)
 
-    class FlowOracle:
+    class FlowGuide:
         def __init__(self, _target, services):
             self.services = services
 
@@ -1505,8 +1505,8 @@ def test_semantic_correction_path_prices_mode_claim_patch_and_submit_without_lea
             FlowGenerator,
             service_factory=ServiceFactory(seed=47, model_backend=backend),
         ),
-        oracle_factory=ActorFactory(
-            FlowOracle,
+        guide_factory=ActorFactory(
+            FlowGuide,
             constructor_args=({"summary": {"synthetic": True}},),
             service_factory=ServiceFactory(
                 seed=53, judge_call=_judge_call(judge)
@@ -2598,7 +2598,7 @@ def test_actual_differentiate_path_charges_mode_whole_draft_and_submit_without_l
             DIFFERENTIATE_COUNT=10,
             DIFFERENTIATE_ACTION="add",
             DIFFERENTIATE_PROMPT="Synthetic differentiation prompt.",
-            ORACLE_POLICY="Synthetic Oracle policy.",
+            GUIDE_POLICY="Synthetic Oracle policy.",
         ),
     )
 
@@ -2633,7 +2633,7 @@ def test_actual_differentiate_path_charges_mode_whole_draft_and_submit_without_l
                 return self._dispatch_question()
             return super().step(value)
 
-    class FlowOracle:
+    class FlowGuide:
         def __init__(self, _target, services):
             self.services = services
 
@@ -2671,8 +2671,8 @@ def test_actual_differentiate_path_charges_mode_whole_draft_and_submit_without_l
             FlowGenerator,
             service_factory=ServiceFactory(seed=107, model_backend=backend),
         ),
-        oracle_factory=ActorFactory(
-            FlowOracle,
+        guide_factory=ActorFactory(
+            FlowGuide,
             constructor_args=({"summary": {"synthetic": True}},),
             service_factory=ServiceFactory(
                 seed=109, judge_call=_judge_call(judge)
@@ -2759,7 +2759,7 @@ def _two_option_question(question_id):
     )
 
 
-def test_agent_oracle_rendering_is_canonical_under_journal_round_trip() -> None:
+def test_agent_guide_rendering_is_canonical_under_journal_round_trip() -> None:
     """Live payloads arrive insertion-ordered; replayed ones decode key-sorted.
 
     The rendered oracle user text must be byte-identical for both, or the
@@ -2840,9 +2840,9 @@ def test_agent_oracle_rendering_is_canonical_under_journal_round_trip() -> None:
                 _agent_output(action="checkout", question_id="q-0001", session="s1"),
             ]
         )
-        oracle = ModularOracle(target_value, services)
-        oracle.step(question_value)
-        oracle.step(feedback_value)
+        guide = ModularGuide(target_value, services)
+        guide.step(question_value)
+        guide.step(feedback_value)
         return [row["user"] for row in services.requests]
 
     def rebuild_question(payload_transform):
@@ -2870,7 +2870,7 @@ def test_agent_oracle_rendering_is_canonical_under_journal_round_trip() -> None:
     assert "generator's whiteboard" in live[0]
 
 
-def test_oracle_rebuilds_its_whole_context_on_every_turn() -> None:
+def test_guide_rebuilds_its_whole_context_on_every_turn() -> None:
     """No turn inherits anything the Oracle did not write down itself.
 
     v1.10 kept a CLI conversation and restarted it every twelve turns. The CLI
@@ -2885,9 +2885,9 @@ def test_oracle_rebuilds_its_whole_context_on_every_turn() -> None:
         _agent_output(option_id="option-a", state_summary=f"summary after turn {i + 1}")
         for i in range(turns)
     ])
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     for index in range(turns):
-        oracle.step(_two_option_question(f"q-{index:04d}"))
+        guide.step(_two_option_question(f"q-{index:04d}"))
 
     assert len(services.requests) == turns
     assert not any("session_id" in request for request in services.requests)
@@ -2903,16 +2903,16 @@ def test_oracle_rebuilds_its_whole_context_on_every_turn() -> None:
             assert f"summary after turn {index + 1}" not in user
 
 
-def test_agent_oracle_match_init_carries_gold_criterion_and_dispatch_notes() -> None:
+def test_agent_guide_match_init_carries_gold_criterion_and_dispatch_notes() -> None:
     services = _AgentServices(
         [
             _agent_output(option_id="option-b"),
             _agent_output(option_id="option-a", session="s1"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": "PRIVATE_GOLD_MARKER"}}, services)
+    guide = ModularGuide({"summary": {"synthetic": "PRIVATE_GOLD_MARKER"}}, services)
 
-    first = oracle.step(_two_option_question("q-0001"))
+    first = guide.step(_two_option_question("q-0001"))
 
     assert first.option_id == "option-b"
     init_request = services.requests[0]
@@ -2927,7 +2927,7 @@ def test_agent_oracle_match_init_carries_gold_criterion_and_dispatch_notes() -> 
     assert "676-way two-letter prefix reveal" in user
     assert "eligible_checkout_questions" in user
 
-    second = oracle.step(_two_option_question("q-0002"))
+    second = guide.step(_two_option_question("q-0002"))
 
     assert second.option_id == "option-a"
     followup = services.requests[1]
@@ -2941,11 +2941,11 @@ def test_agent_oracle_match_init_carries_gold_criterion_and_dispatch_notes() -> 
     assert "- q-0001: Synthetic finite question." in checkout_section
 
 
-def test_agent_oracle_validates_actions_against_displayed_options() -> None:
+def test_agent_guide_validates_actions_against_displayed_options() -> None:
     services = _AgentServices([_agent_output(option_id="option-nonexistent")])
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     with pytest.raises(ValueError, match="unavailable option ID"):
-        oracle.step(_two_option_question("q-0001"))
+        guide.step(_two_option_question("q-0001"))
 
     services = _AgentServices(
         [
@@ -2953,10 +2953,10 @@ def test_agent_oracle_validates_actions_against_displayed_options() -> None:
             _agent_output(action="checkout", question_id="q-elsewhere", session="s1"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
-    oracle.step(_two_option_question("q-0001"))
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
+    guide.step(_two_option_question("q-0001"))
     with pytest.raises(ValueError, match="unavailable checkout ID"):
-        oracle.step(_two_option_question("q-0002"))
+        guide.step(_two_option_question("q-0002"))
 
     services = _AgentServices(
         [
@@ -2965,21 +2965,21 @@ def test_agent_oracle_validates_actions_against_displayed_options() -> None:
             _agent_output(action="checkout", question_id="q-0001", session="s1"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
-    oracle.step(_two_option_question("q-0001"))
-    oracle.step(_two_option_question("q-0002"))
-    rewind = oracle.step(_two_option_question("q-0003"))
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
+    guide.step(_two_option_question("q-0001"))
+    guide.step(_two_option_question("q-0002"))
+    rewind = guide.step(_two_option_question("q-0003"))
     assert isinstance(rewind, Checkout)
     assert rewind.question_id == "q-0001"
 
 
-def test_agent_oracle_does_not_hide_judge_preview_failures() -> None:
+def test_agent_guide_does_not_hide_judge_preview_failures() -> None:
     class FailingJudgeServices(_AgentServices):
         def judge_evaluate(self, ideas):
             raise RuntimeError("synthetic Judge transport failure")
 
     services = FailingJudgeServices([_agent_output(option_id="mode-mc")])
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     snapshot = {
         "ideas": [
             {
@@ -3008,14 +3008,14 @@ def test_agent_oracle_does_not_hide_judge_preview_failures() -> None:
     )
 
     with pytest.raises(RuntimeError, match="synthetic Judge transport failure"):
-        oracle.step(presented)
+        guide.step(presented)
 
     assert services.requests == []
 
 
-def test_agent_oracle_maps_a_unique_exact_preview_row_to_its_dispatch_route() -> None:
+def test_agent_guide_maps_a_unique_exact_preview_row_to_its_dispatch_route() -> None:
     services = _AgentServices([_agent_output(option_id="keyword-category-15")])
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     presented = PresentedQuestion(
         "q-dispatch",
         Question(
@@ -3056,13 +3056,13 @@ def test_agent_oracle_maps_a_unique_exact_preview_row_to_its_dispatch_route() ->
         ),
     )
 
-    choice = oracle.step(presented)
+    choice = guide.step(presented)
 
     assert isinstance(choice, Choice)
     assert choice.option_id == "mode-keyword"
 
 
-def test_agent_oracle_routes_decisions_through_agent_turn() -> None:
+def test_agent_guide_routes_decisions_through_agent_turn() -> None:
     """--oracle-agent (human/claude-code/codex) must actually be consulted.
 
     The CLI swaps the oracle entrypoint to participant.oracle:AgentOracle and
@@ -3074,8 +3074,8 @@ def test_agent_oracle_routes_decisions_through_agent_turn() -> None:
 
     from dataclasses import replace
 
-    _, agent_oracle_cls = load_participant_classes(
-        replace(load_manifest(_PAIR), oracle="participant.oracle:AgentOracle")
+    _, agent_guide_cls = load_participant_classes(
+        replace(load_manifest(_PAIR), guide="participant.oracle:AgentOracle")
     )
 
     class AgentTurnServices(_AgentServices):
@@ -3096,9 +3096,9 @@ def test_agent_oracle_routes_decisions_through_agent_turn() -> None:
             _agent_output(option_id="option-b"),
         ]
     )
-    oracle = agent_oracle_cls({"summary": {"synthetic": True}}, services)
-    first = oracle.step(_two_option_question("q-0001"))
-    second = oracle.step(_two_option_question("q-0002"))
+    guide = agent_guide_cls({"summary": {"synthetic": True}}, services)
+    first = guide.step(_two_option_question("q-0001"))
+    second = guide.step(_two_option_question("q-0002"))
     assert isinstance(first, Choice) and first.option_id == "option-a"
     assert isinstance(second, Choice) and second.option_id == "option-b"
     assert len(services.agent_requests) == 2
@@ -3112,33 +3112,33 @@ def test_agent_oracle_routes_decisions_through_agent_turn() -> None:
         assert "persistent multi-turn conversation" in request["system_prompt"]
 
 
-def test_agent_oracle_stage_transition_is_service_free_and_updates_criterion() -> None:
+def test_agent_guide_stage_transition_is_service_free_and_updates_criterion() -> None:
     services = _AgentServices(
         [
             _agent_output(option_id="option-a"),
             _agent_output(option_id="option-b", session="s1"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
-    oracle.step(_two_option_question("q-0001"))
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
+    guide.step(_two_option_question("q-0001"))
     request_count = len(services.requests)
 
-    ready = oracle.step(StageTransition("directional", "essence"))
+    ready = guide.step(StageTransition("directional", "essence"))
 
     assert isinstance(ready, StageReady)
     assert ready.stage == "essence"
     assert len(services.requests) == request_count
 
-    oracle.step(_two_option_question("q-0002"))
+    guide.step(_two_option_question("q-0002"))
     followup = services.requests[-1]["user"]
     assert "=== ARENA EVENT: stage_transition" in followup
     assert _PAIR_GLOBALS["_stage_criterion"]("essence") in followup
 
     with pytest.raises(ValueError, match="does not match"):
-        oracle.step(StageTransition("directional", "strict"))
+        guide.step(StageTransition("directional", "strict"))
 
 
-def test_oracle_refreshes_preview_and_blocks_unchanged_failure_after_promotion() -> None:
+def test_guide_refreshes_preview_and_blocks_unchanged_failure_after_promotion() -> None:
     """A Directional PASS must never authorize the same draft in Essence.
 
     This reproduces the GLM-5V loop: promotion judges the carried draft under
@@ -3176,7 +3176,7 @@ def test_oracle_refreshes_preview_and_blocks_unchanged_failure_after_promotion()
             _agent_output(option_id="mode-keyword"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     content = {
         "setting_and_object": "A carried Directional draft.",
         "findings": [],
@@ -3205,12 +3205,12 @@ def test_oracle_refreshes_preview_and_blocks_unchanged_failure_after_promotion()
         ),
     )
 
-    first = oracle.step(presented)
+    first = guide.step(presented)
     assert isinstance(first, Choice) and first.option_id == "mode-submit"
     assert services.judge_calls == 1
     assert "DIRECTIONAL_PREVIEW_PASS" in services.requests[0]["user"]
 
-    ready = oracle.step(StageTransition("directional", "essence"))
+    ready = guide.step(StageTransition("directional", "essence"))
     assert ready.stage == "essence"
     feedback = SubmissionFeedback(
         presented,
@@ -3218,10 +3218,10 @@ def test_oracle_refreshes_preview_and_blocks_unchanged_failure_after_promotion()
         (IdeaVerdict("current-draft", False, "ESSENCE_FORMAL_FAIL"),),
         ("q-directional",),
     )
-    recovery = oracle.step(feedback)
+    recovery = guide.step(feedback)
     assert isinstance(recovery, Checkout)
 
-    next_choice = oracle.step(presented)
+    next_choice = guide.step(presented)
     assert isinstance(next_choice, Choice)
     assert next_choice.option_id == "mode-keyword"
     assert services.judge_calls == 2
@@ -3234,23 +3234,23 @@ def test_oracle_refreshes_preview_and_blocks_unchanged_failure_after_promotion()
     assert "submit is unavailable: this exact draft already failed" in replay_prompt
 
 
-def test_agent_oracle_prefixed_transition_before_first_turn_sets_match_init_stage() -> None:
+def test_agent_guide_prefixed_transition_before_first_turn_sets_match_init_stage() -> None:
     class EssenceServices(_AgentServices):
         public_resources = {"active_stage": "essence", "time_travel_enabled": True}
 
     services = EssenceServices([_agent_output(option_id="option-a")])
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
-    ready = oracle.step(StageTransition("essence", "strict"))
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
+    ready = guide.step(StageTransition("essence", "strict"))
 
     assert ready.stage == "strict"
-    oracle.step(_two_option_question("q-0001"))
+    guide.step(_two_option_question("q-0001"))
     user = services.requests[0]["user"]
     assert "=== ACTIVE JUDGE (stage: strict) ===" in user
     assert _PAIR_GLOBALS["_stage_criterion"]("strict") in user
     assert '"event_type":"stage_transition"' not in user
 
 
-def test_agent_oracle_receives_judge_preview_and_feedback_events() -> None:
+def test_agent_guide_receives_judge_preview_and_feedback_events() -> None:
     class PreviewServices(_AgentServices):
         judge_reason = "PRIVATE_PREVIEW_REASON"
 
@@ -3260,7 +3260,7 @@ def test_agent_oracle_receives_judge_preview_and_feedback_events() -> None:
             _agent_output(action="checkout", question_id="q-0001", session="s1"),
         ]
     )
-    oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+    guide = ModularGuide({"summary": {"synthetic": True}}, services)
     base = _two_option_question("q-0001").question
     snapshot = {
         "ideas": [
@@ -3282,7 +3282,7 @@ def test_agent_oracle_receives_judge_preview_and_feedback_events() -> None:
     presented = PresentedQuestion(
         "q-0001", Question(base.question, options)
     )
-    oracle.step(presented)
+    guide.step(presented)
 
     user = services.requests[0]["user"]
     assert "PRIVATE_PREVIEW_REASON" in user
@@ -3294,7 +3294,7 @@ def test_agent_oracle_receives_judge_preview_and_feedback_events() -> None:
         (IdeaVerdict("current-draft", False, "PRIVATE_JUDGE_DIAGNOSIS"),),
         ("q-0001",),
     )
-    recovery = oracle.step(feedback)
+    recovery = guide.step(feedback)
 
     assert isinstance(recovery, Checkout)
     assert recovery.question_id == "q-0001"
@@ -3307,16 +3307,16 @@ def test_agent_oracle_receives_judge_preview_and_feedback_events() -> None:
     )[1]
 
 
-def test_oracle_requires_reasoning_and_state_summary() -> None:
+def test_guide_requires_reasoning_and_state_summary() -> None:
     """state_summary is the only memory now, so an empty one is fatal."""
 
     for field in ("state_summary", "reasoning"):
         output = _agent_output(option_id="option-a")
         output[field] = ""
         services = _AgentServices([output])
-        oracle = ModularOracle({"summary": {"synthetic": True}}, services)
+        guide = ModularGuide({"summary": {"synthetic": True}}, services)
         with pytest.raises(ValueError, match="reasoning or state_summary"):
-            oracle.step(_two_option_question("q-0001"))
+            guide.step(_two_option_question("q-0001"))
 
 
 def test_keyword_reveal_guess_and_character_loop_follows_the_v0_4_rhythm() -> None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ._compat import legacy_fields
+
 import json
 import threading
 import time
@@ -126,7 +128,7 @@ class _ProgressModelBackend:
             restore_fn(usage)
 
 
-class ProbabilitySamplingOracle:
+class ProbabilitySamplingGuide:
     """Select Generator options according to their declared probabilities.
 
     Randomness comes exclusively from the injected service, so a fixed seed
@@ -178,6 +180,7 @@ class SampledChoice:
         }
 
 
+@legacy_fields(oracle_usage='guide_usage')
 @dataclass(frozen=True, slots=True)
 class SampledIdeas:
     """A Generator submission and the random path that produced it."""
@@ -190,7 +193,7 @@ class SampledIdeas:
     submission: Submission
     choices: tuple[SampledChoice, ...]
     generator_usage: Mapping[str, Any]
-    oracle_usage: Mapping[str, Any]
+    guide_usage: Mapping[str, Any]
     resumed_from: str | None = None
 
     @property
@@ -217,7 +220,7 @@ class SampledIdeas:
             ],
             "usage": {
                 "generator": dict(self.generator_usage),
-                "oracle": dict(self.oracle_usage),
+                "oracle": dict(self.guide_usage),
             },
         }
 
@@ -343,5 +346,9 @@ def _sampled_ideas_from_raw(raw: Mapping[str, Any]) -> SampledIdeas:
             for item in raw["choices"]
         ),
         generator_usage=dict((raw.get("usage") or {}).get("generator") or {}),
-        oracle_usage=dict((raw.get("usage") or {}).get("oracle") or {}),
+        guide_usage=dict((raw.get("usage") or {}).get("oracle") or {}),
     )
+
+
+# Legacy Python names remain available for existing submissions.
+ProbabilitySamplingOracle = ProbabilitySamplingGuide

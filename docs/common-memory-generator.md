@@ -2,7 +2,7 @@
 
 This adapter keeps the participant policy from `reference-pair-submit8` 1.18.0
 (commit `2829b494`, imported through Git unchanged). It adds a common memory
-policy outside the source-built Codex runtime. It does not alter Oracle choices,
+policy outside the source-built Codex runtime. It does not alter Guide choices,
 Judge criteria, probabilities, or K scoring. The existing API and native CLI paths
 remain available when `--generator-memory common` is omitted.
 
@@ -53,7 +53,7 @@ Cached Questions and eight-candidate slates remain exact participant state;
 compaction does not summarize or regenerate those artifacts. Eager previews are
 authored in a deterministic serial order within one paper. Parallel papers can
 still run independently. Summary and failed attempts count toward resource usage,
-but do not create priced Oracle choices or change K. Unexpected native Codex
+but do not create priced Guide choices or change K. Unexpected native Codex
 compaction is detected and fails as a protocol mismatch.
 
 The common trigger and memory budget define policy fairness. Native tokenizer,

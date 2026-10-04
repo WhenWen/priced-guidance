@@ -7,13 +7,13 @@ policy belongs to the frozen shared submission; use the original snapshot
 for old trajectories rather than substituting this version during recovery.
 
 This submission is a standalone fork of `reference-pair` v1.17.4. Its only
-behavioral change is the Oracle structured-output wording: the fields still
+behavioral change is the Guide structured-output wording: the fields still
 carry a brief action justification and durable run summary, but the prompt no
 longer describes them as private or hidden reasoning. This avoids Fable 5.1's
 `reasoning_extraction` false positive without changing the Generator, stage
 policies, option protocol, target data, Judge criteria, or JSON field names.
 
-The reference pair separates its Generator and Oracle policies into three
+The reference pair separates its Generator and Guide policies into three
 replaceable stage actor modules, one per Judge rung:
 
 1. `directional.py` + `directional_channels.py`: zero information to a
@@ -24,7 +24,7 @@ replaceable stage actor modules, one per Judge rung:
    sufficiently detailed draft.
 
 Each stage's `.py` file owns the complete actor function surface
-(`generator_step`, route builders, state update, submission, `oracle_step`,
+(`generator_step`, route builders, state update, submission, `guide_step`,
 and the two service-free `*_on_enter` hooks). Its sibling `_channels.py` is an
 implementation file in the same stage hash group. The entrypoints and
 `pair.py` are frozen `shared` files; `pair.py` is the stable actor shell,
@@ -55,7 +55,7 @@ editing Strict cannot change reconstruction of a paid Directional turn.
 Every Generator prompt opens with the first-principles researcher preamble.
 The whiteboard is a model-authored prose belief state (leading hypothesis,
 established mechanisms with one-line explanations, ranked open uncertainties);
-after every applied oracle answer or channel-level rejection a dedicated
+after every applied guide answer or channel-level rejection a dedicated
 state-update turn folds the buffered priced events into a rewritten whiteboard
 and top idea (the draft). The update turn is target-blind and unpriced; every
 fact it integrates still traces to a paid Choice. The Generator-visible
@@ -73,7 +73,7 @@ state.
 route digest in a single model call: for every model-backed displayed route it
 states concretely what it would ask if that route were opened (the MC axis and
 candidate values, the keyword categories in rank order, each correction axis
-with its exact current span). The Oracle routes on the digest and pays the
+with its exact current span). The Guide routes on the digest and pays the
 ordinary route Choice; the real downstream Question is generated only after a
 route is bought. Digest rows are a plan, never facts. (Earlier versions built
 every route's complete downstream Question eagerly; that preview was ~93% of
@@ -124,7 +124,7 @@ characters.
 existing claim. The target-blind Generator first authors 16 complete
 `before_claim` propositions already expressed or entailed by the draft; a
 claim may summarize wording spread across clauses and need not quote an exact
-sentence. After the Oracle selects one, the Generator authors 16 full patches:
+sentence. After the Guide selects one, the Generator authors 16 full patches:
 `replace`, `refine`, or `delete`, each with the complete resulting draft.
 Replace/refine carries a complete non-empty `after_claim` that becomes the
 canonical paid fact; delete carries no after-claim. `insert` is deliberately
@@ -151,13 +151,13 @@ The IDs, drafts, and route labels all arise from public paid Choices.
 and retired facts, and fact provenance. Stage switching itself performs no
 model or random call and adds no information bits.
 
-## Oracle
+## Guide
 
-Every Oracle turn is one ordinary structured model call carrying the complete
+Every Guide turn is one ordinary structured model call carrying the complete
 context: `MATCH_INIT` verbatim (the private gold target, the active stage's
 exact Judge criterion, the arena rules, and a purely descriptive
-`MODULAR_DISPATCH_NOTES` block), the Oracle's own last `state_summary`, and
-the current event. Nothing about the Oracle's context is decided by an
+`MODULAR_DISPATCH_NOTES` block), the Guide's own last `state_summary`, and
+the current event. Nothing about the Guide's context is decided by an
 auto-compacting external conversation — earlier versions ran a persistent CLI
 session, and measurement showed the CLI compacted it unpredictably. Its policy
 keeps truthfulness as a hard constraint, cost-aware arm selection at dispatch,
@@ -169,26 +169,26 @@ the main contribution and most tightly constrains its distinctive mechanism,
 instead of a cheaper generic application or artifact label. Semantic correction
 is deliberately conservative: when the current
 interpretation is unsupported and no displayed replacement is target-supported,
-the Oracle first chooses a complete deletion, records the relation as unresolved,
+the Guide first chooses a complete deletion, records the relation as unresolved,
 and returns to keyword/MC to recover it instead of refining the same guess.
 
-The Oracle takes its own same-stage Judge reading through the injected
+The Guide takes its own same-stage Judge reading through the injected
 `services.judge_evaluate` service, once per distinct draft: an unchanged draft
 cannot earn a different verdict. Judge text never reaches the Generator.
 
-`participant.oracle:AgentOracle` is the optional agent-backend variant the
-Arena selects when a run passes `--oracle-agent {claude-code,codex,human}`: it
+`participant.guide:AgentGuide` is the optional agent-backend variant the
+Arena selects when a run passes `--guide-agent {claude-code,codex,human}`: it
 sends the identical per-turn prompt through `services.agent_turn` (one fresh
-backend session per turn), so a human can play the Oracle through the
+backend session per turn), so a human can play the Guide through the
 `run_dir/agent-workspace/oracle/human/` request/answer files, or a CLI agent
 can play it under the same journaled, replayable transport. Default runs use
-the plain `Oracle`.
+the plain `Guide`.
 
 ## StageTransition handling
 
 `StageTransition` messages are Arena-authored and service-free. The Generator
 flips its stage, keeps its full ledger, and invokes the destination module's
-`generator_on_enter`; the Oracle invokes `oracle_on_enter`, updates its
+`generator_on_enter`; the Guide invokes `guide_on_enter`, updates its
 criterion, and reports the new rung as an ordinary `ARENA_EVENT` on its next
 paid turn. The hooks may initialize later-stage keys with `setdefault`, but
 must not call an injected service. Both actors then reply with `StageReady`.
