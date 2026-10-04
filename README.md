@@ -127,10 +127,10 @@ idea-arena new submissions/my_pair
 idea-arena new submissions/my_reference_pair --reference
 ```
 
-For the eight-candidate Directional scaffold, copy
-`submissions/reference_pair_submit8` to a new folder instead. Edit the copied
-`submission.toml` to give your pair a unique `name` and version, then edit
-`participant/generator.py`, `participant/oracle.py`, and their strategy modules.
+You can also create your own pair following the structure of
+`submissions/reference_pair_submit8`, our eight-candidate Directional reference.
+Give your pair a unique `name` and version in `submission.toml`, and implement
+`participant/generator.py`, `participant/oracle.py`, and any strategy modules.
 The reference entrypoints delegate most strategy code to `participant/stages/`.
 
 ```toml
