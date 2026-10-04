@@ -6,12 +6,14 @@ jobs:
   test:
     runs-on: macos-14
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.11', '3.13']
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen --extra dev --extra providers --python '${{ matrix.python-version }}'
+      # Framework Python launchers cannot start inside the participant sandbox.
+      - run: uv sync --managed-python --frozen --extra dev --extra providers --python '${{ matrix.python-version }}'
       - run: uv run --no-sync python -m pytest -q
       - run: uv run --no-sync idea-arena doctor
       - run: uv run --no-sync python tools/validate_target_pack.py development40 test87

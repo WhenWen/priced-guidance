@@ -49,12 +49,13 @@ idea-arena run submissions/examples/minimal_pair \
   --target-pack smoke --seed 1 --runs-dir generated/smoke --no-html-report
 ```
 
-If Python 3.13 is not installed, `uv venv --python 3.13 .venv` can create the
+If Python 3.13 is not installed, `uv venv --managed-python --python 3.13 .venv` can create the
 environment instead. On Linux, common-memory/native Generator runs and their
 isolation tests also require `bubblewrap` and enabled unprivileged user namespaces
 (for example, `sudo apt-get install bubblewrap` on a compatible Ubuntu host).
-On macOS, use a standalone Python such as `uv`'s Python 3.13: the Homebrew
-Python 3.14 framework launcher is not supported by the current sandbox profile.
+On macOS, use a standalone Python such as `uv`'s managed Python 3.13. Framework
+Python launchers (including Homebrew and python.org builds) are not supported by
+the current sandbox profile; `--managed-python` prevents reuse of those builds.
 
 The smoke example uses no model APIs. Its output includes a `run_dir`, status,
 and score. All commands below assume this environment is active and that you

@@ -26,9 +26,13 @@ the framework launcher tried to spawn an executable outside the permitted launch
 path. The full suite passes with standalone CPython 3.13. The README recommends
 that environment; the sandbox was not weakened to accommodate the launcher.
 Linux namespace/egress integration checks require a Linux host with bubblewrap;
-they have not been executed as part of this local preparation. The GitHub workflow
-uses standalone Python on macOS and has not run remotely because this repository
-has not been published.
+they have not been executed as part of this local preparation.
+
+The first GitHub Actions run selected the runner's preinstalled framework Python
+on both Python 3.11 and 3.13, causing 20 sandbox-dependent failures per version
+(593 passed, 5 skipped). The workflow now requires uv-managed standalone Python
+with `uv sync --managed-python`; it preserves the sandbox restrictions and runs
+both Python versions independently.
 
 Live Opus summaries, provider-backed compression experiments, new native-backend
 builds, and every historical trajectory are not claimed as rerun. The tests use
